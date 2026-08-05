@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api import auth, users, products, cases, orders, ai_ws, knowledge, credit, recommendations, dashboard, reports, promotions, upload
+from app.api import auth, users, products, cases, orders, ai_ws, knowledge, credit, recommendations, dashboard, reports, promotions, upload, cart
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router, prefix="/auth", tags=["认证"])
@@ -15,3 +15,4 @@ api_router.include_router(recommendations.router, prefix="/recommendations", tag
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["看板"])
 api_router.include_router(reports.router, prefix="/reports", tags=["报表"])
 api_router.include_router(promotions.router, prefix="/promotions", tags=["促销"])
+api_router.include_router(cart.router, prefix="/cart", tags=["购物车"])
