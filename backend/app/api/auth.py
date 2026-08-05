@@ -1,11 +1,13 @@
 """认证相关 API 端点"""
 import uuid
+import hashlib
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
-import httpx
 from app.database import get_db
 from app.models.user import User, UserRole, UserStatus, RetailerProfile, RetailerLevel
 from app.schemas.user import (
@@ -112,9 +114,15 @@ async def wx_login(req: WxLoginRequest, db: AsyncSession = Depends(get_db)):
             f"&js_code={req.code}"
             f"&grant_type=authorization_code"
         )
-        async with httpx.AsyncClient() as http:
-            resp = await http.get(url)
-            wx_data = resp.json()
+        try:
+            async with httpx.AsyncClient() as http:
+                resp = await http.get(url)
+                wx_data = resp.json()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"微信服务暂不可用: {e}",
+            )
         if wx_data.get("errcode", 0) != 0:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,10 +142,12 @@ async def wx_login(req: WxLoginRequest, db: AsyncSession = Depends(get_db)):
         nickname = None
         avatar = None
         if req.user_info:
-            nickname = req.user_info.get("nickName")
-            avatar = req.user_info.get("avatarUrl")
+            nickname = req.user_info.nickName
+            avatar = req.user_info.avatarUrl
+        # phone: use hash of openid to avoid truncation collision
+        phone_suffix = hashlib.sha256(openid.encode()).hexdigest()[:17]
         user = User(
-            phone=f"wx_{openid}"[:20],
+            phone=f"wx_{phone_suffix}",
             wx_openid=openid,
             nickname=nickname,
             avatar=avatar,
@@ -147,14 +157,25 @@ async def wx_login(req: WxLoginRequest, db: AsyncSession = Depends(get_db)):
             status=UserStatus.PENDING_REVIEW,
         )
         db.add(user)
-        await db.flush()
-        # Re-query with eager loading so model_validate works without greenlet
-        result = await db.execute(
-            select(User)
-            .options(selectinload(User.retailer_profile))
-            .where(User.id == user.id)
-        )
-        user = result.scalar_one()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            # Race condition: another request created the same user
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.retailer_profile))
+                .where(User.wx_openid == openid)
+            )
+            user = result.scalar_one()
+        else:
+            # Re-query with eager loading so model_validate works without greenlet
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.retailer_profile))
+                .where(User.id == user.id)
+            )
+            user = result.scalar_one()
 
     # 3. Generate tokens
     access_token = create_access_token(user.id, user.role.value)

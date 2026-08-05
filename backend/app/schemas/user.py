@@ -79,9 +79,14 @@ class ReviewRetailerRequest(BaseModel):
 
 
 # ── WeChat Login ──
+class WxUserInfo(BaseModel):
+    nickName: str | None = None
+    avatarUrl: str | None = None
+
+
 class WxLoginRequest(BaseModel):
     code: str
-    user_info: dict | None = None
+    user_info: WxUserInfo | None = None
 
 
 class WxLoginResult(BaseModel):
