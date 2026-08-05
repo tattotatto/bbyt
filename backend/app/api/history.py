@@ -3,6 +3,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, func, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -31,9 +32,12 @@ class HistoryItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _build_history_item_out(item: BrowseHistory) -> HistoryItemOut:
-    """从 BrowseHistory ORM 对象构建 HistoryItemOut，拼接 Product 信息"""
-    product = item.product
+def _build_history_item_out(
+    item: BrowseHistory, product: Product | None = None
+) -> HistoryItemOut:
+    """从 BrowseHistory ORM 对象构建 HistoryItemOut，拼接 Product 信息。
+    若传入 product 则直接使用，避免再触发 lazy-load。"""
+    product = product or item.product
     image = None
     if product and product.images and len(product.images) > 0:
         image = product.images[0]
@@ -88,39 +92,45 @@ async def record_history(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """记录商品浏览：已存在则更新 viewed_at，不存在则新建"""
+    """记录商品浏览：INSERT 优先，唯一约束冲突则回退为 UPDATE。
+    并发双请求都走到 INSERT 时，后者捕获 IntegrityError 后更新 viewed_at，不会 500。"""
     user_id = current_user["user_id"]
 
-    # 校验商品是否存在
+    # 校验商品是否存在（同时拿到 product 实体，后面传给 builder 避免 lazy-load）
     product_result = await db.execute(select(Product).where(Product.id == req.product_id))
     product = product_result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
 
-    # 查 (user_id, product_id) 是否已有记录
-    existing_result = await db.execute(
-        select(BrowseHistory).where(
+    now = datetime.now(timezone.utc)
+
+    # Step 1: 尝试直接 INSERT（覆盖最常见的首次浏览）
+    try:
+        item = BrowseHistory(user_id=user_id, product_id=req.product_id, viewed_at=now)
+        db.add(item)
+        await db.flush()
+        return APIResponse.ok(
+            data=_build_history_item_out(item, product=product), message="已记录浏览"
+        )
+    except IntegrityError:
+        # 并发场景：另一请求已插入同 (user_id, product_id)，回滚后走 UPDATE
+        await db.rollback()
+
+    # Step 2: 回退 — 查出现有记录，更新 viewed_at
+    result = await db.execute(
+        select(BrowseHistory)
+        .options(joinedload(BrowseHistory.product))
+        .where(
             BrowseHistory.user_id == user_id,
             BrowseHistory.product_id == req.product_id,
         )
     )
-    existing = existing_result.scalar_one_or_none()
-
-    if existing:
-        existing.viewed_at = datetime.now(timezone.utc)
-        await db.flush()
-        await db.refresh(existing)
-        return APIResponse.ok(data=_build_history_item_out(existing), message="已更新浏览时间")
-    else:
-        item = BrowseHistory(
-            user_id=user_id,
-            product_id=req.product_id,
-            viewed_at=datetime.now(timezone.utc),
-        )
-        db.add(item)
-        await db.flush()
-        await db.refresh(item)
-        return APIResponse.ok(data=_build_history_item_out(item), message="已记录浏览")
+    existing = result.scalar_one()
+    existing.viewed_at = now
+    await db.flush()
+    return APIResponse.ok(
+        data=_build_history_item_out(existing), message="已更新浏览时间"
+    )
 
 
 @router.delete("/{product_id}", response_model=APIResponse, summary="删除单条浏览记录")
