@@ -1,7 +1,7 @@
 """收藏模型"""
 import uuid
 from sqlalchemy import ForeignKey, UniqueConstraint, Uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
@@ -18,3 +18,5 @@ class Favorite(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_favorite_user_product"),
     )
+
+    product: Mapped["Product"] = relationship("Product", lazy="selectin")
