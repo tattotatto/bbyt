@@ -47,6 +47,8 @@ class UserOut(BaseModel):
     credit_limit: int
     credit_balance: int
     status: str
+    nickname: str | None = None
+    avatar: str | None = None
     retailer_profile: RetailerProfileOut | None = None
     created_at: datetime | None = None
 
@@ -74,3 +76,15 @@ class ReviewRetailerRequest(BaseModel):
     level: str | None = Field(None, pattern="^(normal|silver|gold|platinum)$")
     credit_limit: int | None = Field(None, ge=0, description="账期额度(分)")
     reject_reason: str | None = Field(None, max_length=500)
+
+
+# ── WeChat Login ──
+class WxLoginRequest(BaseModel):
+    code: str
+    user_info: dict | None = None
+
+
+class WxLoginResult(BaseModel):
+    access_token: str
+    refresh_token: str
+    user_info: UserOut

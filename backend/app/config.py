@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # WeChat
     WECHAT_APPID: str = ""
     WECHAT_SECRET: str = ""
+    WX_DEV_CODE_PREFIX: str = "dev_"
 
     # AI / LLM — 对话下单引擎 + 向量检索
     DEEPSEEK_API_KEY: str = ""

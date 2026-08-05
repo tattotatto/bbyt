@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 from app.database import get_db
 from app.models.order import Order, OrderStatus, PaymentStatus, PaymentMethod
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, UserStatus
 from app.schemas.order import (
     OrderCreate, OrderOut, OrderListOut, OrderStatusUpdate,
     AssignDesignerRequest, PaymentSubmit,
@@ -26,6 +26,17 @@ async def place_order(
     db: AsyncSession = Depends(get_db),
 ):
     """创建订单：校验库存、匹配价格、生成快照"""
+    # 审核门禁：非 ACTIVE 且非 admin/operator → 拒绝下单
+    if current_user["role"] not in ("admin", "operator"):
+        result = await db.execute(
+            select(User.status).where(User.id == current_user["user_id"])
+        )
+        user_status = result.scalar_one_or_none()
+        if user_status is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        if user_status != UserStatus.ACTIVE:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号审核中，暂不能下单")
+
     try:
         items_dicts = [item.model_dump() for item in req.items]
         order = await create_order(
