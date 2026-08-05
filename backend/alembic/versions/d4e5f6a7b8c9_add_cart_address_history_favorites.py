@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('avatar', sa.String(length=500), nullable=True, comment='头像URL'))
 
     # --- Add REFUNDING to orderstatus enum ---
-    op.execute("ALTER TYPE orderstatus ADD VALUE IF NOT EXISTS 'REFUNDING'")
+    op.execute("ALTER TYPE orderstatus ADD VALUE IF NOT EXISTS 'refunding'")
 
     # --- cart_items ---
     op.create_table('cart_items',
