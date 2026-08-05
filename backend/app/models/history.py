@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import ForeignKey, DateTime, UniqueConstraint, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
@@ -22,3 +22,5 @@ class BrowseHistory(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_history_user_product"),
     )
+
+    product: Mapped["Product"] = relationship("Product", lazy="selectin")
