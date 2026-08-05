@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class CartItemCreate(BaseModel):
-    product_id: str
+    product_id: UUID
     spec: str = "默认"
     quantity: int = Field(..., ge=1, description="数量 >= 1")
 

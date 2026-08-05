@@ -2,6 +2,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.cart import CartItem
@@ -41,7 +42,9 @@ async def list_cart(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(CartItem).where(CartItem.user_id == current_user["user_id"])
+        select(CartItem)
+        .options(joinedload(CartItem.product))
+        .where(CartItem.user_id == current_user["user_id"])
     )
     items = result.scalars().all()
     return APIResponse.ok(data=[_build_cart_item_out(item) for item in items])
@@ -53,11 +56,9 @@ async def add_to_cart(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    product_id = UUID(req.product_id)
-
     # 校验商品是否存在且上架
     product_result = await db.execute(
-        select(Product).where(Product.id == product_id)
+        select(Product).where(Product.id == req.product_id)
     )
     product = product_result.scalar_one_or_none()
     if not product:
@@ -73,7 +74,7 @@ async def add_to_cart(
     existing_result = await db.execute(
         select(CartItem).where(
             CartItem.user_id == current_user["user_id"],
-            CartItem.product_id == product_id,
+            CartItem.product_id == req.product_id,
             CartItem.spec == req.spec,
         )
     )
@@ -92,7 +93,7 @@ async def add_to_cart(
         # 新建
         item = CartItem(
             user_id=current_user["user_id"],
-            product_id=product_id,
+            product_id=req.product_id,
             spec=req.spec,
             quantity=req.quantity,
         )
