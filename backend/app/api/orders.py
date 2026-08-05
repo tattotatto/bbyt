@@ -202,6 +202,105 @@ async def submit_payment(
     )
 
 
+@router.post("/{order_id}/cancel", response_model=APIResponse[OrderOut], summary="取消订单")
+async def cancel_order(
+    order_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+
+    # 权限：非 admin/operator 时校验本人
+    if current_user["role"] not in ("admin", "operator") and order.retailer_id != current_user["user_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权操作此订单")
+
+    if order.status != OrderStatus.PENDING_PAYMENT:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅待支付订单可取消")
+
+    order.status = OrderStatus.CANCELLED
+    timeline = order.timeline or []
+    timeline.append({
+        "status": "cancelled",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "operator": str(current_user["user_id"]),
+    })
+    order.timeline = timeline
+    flag_modified(order, "timeline")
+
+    await db.flush()
+    await db.refresh(order)
+    return APIResponse.ok(data=OrderOut.model_validate(order), message="订单已取消")
+
+
+@router.post("/{order_id}/confirm", response_model=APIResponse[OrderOut], summary="确认收货")
+async def confirm_order(
+    order_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+
+    # 权限：非 admin/operator 时校验本人
+    if current_user["role"] not in ("admin", "operator") and order.retailer_id != current_user["user_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权操作此订单")
+
+    if order.status != OrderStatus.SHIPPED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅已发货订单可确认收货")
+
+    order.status = OrderStatus.COMPLETED
+    timeline = order.timeline or []
+    timeline.append({
+        "status": "completed",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "operator": str(current_user["user_id"]),
+    })
+    order.timeline = timeline
+    flag_modified(order, "timeline")
+
+    await db.flush()
+    await db.refresh(order)
+    return APIResponse.ok(data=OrderOut.model_validate(order), message="确认收货成功")
+
+
+@router.post("/{order_id}/refund", response_model=APIResponse[OrderOut], summary="申请退款")
+async def refund_order(
+    order_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+
+    # 权限：非 admin/operator 时校验本人
+    if current_user["role"] not in ("admin", "operator") and order.retailer_id != current_user["user_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权操作此订单")
+
+    if order.status not in (OrderStatus.PAID, OrderStatus.SHIPPED):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅已支付或已发货订单可申请退款")
+
+    order.status = OrderStatus.REFUNDING
+    timeline = order.timeline or []
+    timeline.append({
+        "status": "refunding",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "operator": str(current_user["user_id"]),
+    })
+    order.timeline = timeline
+    flag_modified(order, "timeline")
+
+    await db.flush()
+    await db.refresh(order)
+    return APIResponse.ok(data=OrderOut.model_validate(order), message="退款申请已提交")
+
+
 @router.post("/{order_id}/assign", response_model=APIResponse[OrderOut], summary="指派设计师（管理员）")
 async def assign_designer(
     order_id: UUID,

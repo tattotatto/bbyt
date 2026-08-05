@@ -68,7 +68,7 @@ class OrderListOut(BaseModel):
 
 
 class OrderStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(paid|shipped|confirmed|completed|cancelled)$")
+    status: str = Field(..., pattern="^(paid|shipped|confirmed|completed|cancelled|refunding)$")
     tracking_number: str | None = None
 
 
