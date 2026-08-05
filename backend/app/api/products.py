@@ -125,7 +125,7 @@ async def list_products(
 ):
     # Redis 缓存（仅默认排序无筛选时用缓存；price 排序因在内存进行不缓存）
     use_cache = sort in ("newest", "sales_desc")
-    cache_key = f"products:list:{category_id}:{age_range}:{keyword}:{page}:{page_size}:{sort}"
+    cache_key = f"products:list:{category_id}:{age_range}:{is_virtual}:{status_filter}:{keyword}:{page}:{page_size}:{sort}"
     if use_cache and redis_module.redis_client:
         cached = await redis_module.redis_client.get(cache_key)
         if cached:
