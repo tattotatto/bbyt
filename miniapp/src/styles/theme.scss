@@ -1,0 +1,327 @@
+// ===================================
+// HxMall Design Tokens — Theme SCSS
+// Brand: Coral pink, Cream white
+// ===================================
+
+:root {
+  // ── Primary Colors ──────────────────
+  --color-primary: #FF7B7B;
+  --color-primary-light: #FFA5A5;
+  --color-primary-dark: #E05555;
+  --color-primary-bg: #FFF0F0;
+
+  // ── Background Colors ───────────────
+  --bg-primary: #FFF8F0;
+  --bg-white: #FFFFFF;
+  --bg-secondary: #FFF5EE;
+  --bg-warm: #FEF9F3;
+  --bg-muted: #F5F0EB;
+
+  // ── Secondary Colors ────────────────
+  --color-sky: #7EC8E3;
+  --color-sky-light: #B3E0F0;
+  --color-sky-dark: #5AA3BD;
+  --color-sky-bg: #F0F8FB;
+
+  --color-mint: #A8D8B9;
+  --color-mint-light: #C8E8D3;
+  --color-mint-dark: #7CB890;
+  --color-mint-bg: #F2FAF5;
+
+  // ── Accent Colors ───────────────────
+  --color-accent: #FFD93D;
+  --color-accent-light: #FFE87C;
+  --color-accent-dark: #E0B800;
+  --color-accent-bg: #FFFBE6;
+
+  // ── Text Colors ─────────────────────
+  --text-primary: #4a3728;
+  --text-secondary: #7a6a5a;
+  --text-muted: #b0a090;
+  --text-placeholder: #c8bca8;
+  --text-white: #FFFFFF;
+  --text-link: #FF7B7B;
+
+  // ── Border Colors ───────────────────
+  --border-color: #f0e0d0;
+  --border-light: #f5ece3;
+  --border-dark: #d8c8b4;
+  --border-input: #e8d8c4;
+
+  // ── Status Colors ───────────────────
+  --color-success: #A8D8B9;
+  --color-warning: #FFD93D;
+  --color-danger: #FF7B7B;
+  --color-info: #7EC8E3;
+  --color-disabled: #d0c8b8;
+
+  // ── Border Radius ───────────────────
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 50px;
+  --radius-circle: 50%;
+  --radius-none: 0;
+
+  // ── Shadows ─────────────────────────
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.1);
+  --shadow-dropdown: 0 6px 24px rgba(0, 0, 0, 0.08);
+  --shadow-button: 0 2px 8px rgba(255, 123, 123, 0.3);
+  --shadow-none: none;
+
+  // ── Font Sizes ──────────────────────
+  --font-xs: 20rpx;
+  --font-sm: 24rpx;
+  --font-base: 28rpx;
+  --font-md: 30rpx;
+  --font-lg: 32rpx;
+  --font-xl: 36rpx;
+  --font-2xl: 40rpx;
+  --font-3xl: 48rpx;
+  --font-4xl: 56rpx;
+
+  // ── Font Weights ────────────────────
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  // ── Line Heights ────────────────────
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  // ── Spacing Scale (rpx) ─────────────
+  --space-2xs: 4rpx;
+  --space-xs: 8rpx;
+  --space-sm: 12rpx;
+  --space-md: 16rpx;
+  --space-base: 20rpx;
+  --space-lg: 24rpx;
+  --space-xl: 32rpx;
+  --space-2xl: 40rpx;
+  --space-3xl: 48rpx;
+  --space-4xl: 64rpx;
+
+  // ── Z-Index Scale ───────────────────
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  // ── Transitions ─────────────────────
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  // ── Component Tokens ────────────────
+  --navbar-height: 44px;
+  --tabbar-height: 50px;
+  --safe-area-bottom: constant(safe-area-inset-bottom);
+  --safe-area-bottom-env: env(safe-area-inset-bottom);
+}
+
+
+// ═══════════════════════════════════════
+//  Utility Classes
+// ═══════════════════════════════════════
+
+// ── Text Utilities ────────────────────
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-link { color: var(--text-link); }
+.text-white { color: var(--text-white); }
+.text-primary-brand { color: var(--color-primary); }
+.text-sky { color: var(--color-sky); }
+.text-mint { color: var(--color-mint); }
+.text-accent { color: var(--color-accent); }
+
+.text-xs { font-size: var(--font-xs); }
+.text-sm { font-size: var(--font-sm); }
+.text-base { font-size: var(--font-base); }
+.text-md { font-size: var(--font-md); }
+.text-lg { font-size: var(--font-lg); }
+.text-xl { font-size: var(--font-xl); }
+.text-2xl { font-size: var(--font-2xl); }
+.text-3xl { font-size: var(--font-3xl); }
+
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+.leading-tight { line-height: var(--leading-tight); }
+.leading-normal { line-height: var(--leading-normal); }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-ellipsis-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-ellipsis-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Flex Layout Utilities ─────────────
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-row { display: flex; flex-direction: row; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-nowrap { flex-wrap: nowrap; }
+
+.flex-1 { flex: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+.flex-grow { flex-grow: 1; }
+
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.items-stretch { align-items: stretch; }
+.items-baseline { align-items: baseline; }
+
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.justify-evenly { justify-content: space-evenly; }
+
+.self-start { align-self: flex-start; }
+.self-center { align-self: center; }
+.self-end { align-self: flex-end; }
+
+// ── Spacing Utilities ─────────────────
+.gap-2xs { gap: var(--space-2xs); }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-base { gap: var(--space-base); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.gap-2xl { gap: var(--space-2xl); }
+
+.p-xs { padding: var(--space-xs); }
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.p-base { padding: var(--space-base); }
+.p-lg { padding: var(--space-lg); }
+.p-xl { padding: var(--space-xl); }
+
+.px-sm { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+.px-md { padding-left: var(--space-md); padding-right: var(--space-md); }
+.px-base { padding-left: var(--space-base); padding-right: var(--space-base); }
+.px-lg { padding-left: var(--space-lg); padding-right: var(--space-lg); }
+
+.py-sm { padding-top: var(--space-sm); padding-bottom: var(--space-sm); }
+.py-md { padding-top: var(--space-md); padding-bottom: var(--space-md); }
+.py-base { padding-top: var(--space-base); padding-bottom: var(--space-base); }
+.py-lg { padding-top: var(--space-lg); padding-bottom: var(--space-lg); }
+
+.m-xs { margin: var(--space-xs); }
+.m-sm { margin: var(--space-sm); }
+.m-md { margin: var(--space-md); }
+.m-base { margin: var(--space-base); }
+.m-lg { margin: var(--space-lg); }
+.m-xl { margin: var(--space-xl); }
+
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-base { margin-top: var(--space-base); }
+.mt-lg { margin-top: var(--space-lg); }
+.mt-xl { margin-top: var(--space-xl); }
+
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-base { margin-bottom: var(--space-base); }
+.mb-lg { margin-bottom: var(--space-lg); }
+.mb-xl { margin-bottom: var(--space-xl); }
+
+.ml-auto { margin-left: auto; }
+.mr-auto { margin-right: auto; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+// ── Border Radius Utilities ───────────
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-pill { border-radius: var(--radius-pill); }
+.rounded-circle { border-radius: var(--radius-circle); }
+
+// ── Shadow Utilities ──────────────────
+.shadow-card { box-shadow: var(--shadow-card); }
+.shadow-elevated { box-shadow: var(--shadow-elevated); }
+.shadow-button { box-shadow: var(--shadow-button); }
+
+// ── Background Utilities ──────────────
+.bg-primary { background-color: var(--bg-primary); }
+.bg-white { background-color: var(--bg-white); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-warm { background-color: var(--bg-warm); }
+.bg-muted { background-color: var(--bg-muted); }
+.bg-primary-brand { background-color: var(--color-primary); }
+.bg-primary-light { background-color: var(--color-primary-light); }
+.bg-primary-bg { background-color: var(--color-primary-bg); }
+.bg-sky { background-color: var(--color-sky); }
+.bg-sky-light { background-color: var(--color-sky-light); }
+.bg-mint { background-color: var(--color-mint); }
+.bg-mint-light { background-color: var(--color-mint-light); }
+.bg-accent { background-color: var(--color-accent); }
+
+// ── Position Utilities ────────────────
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.sticky { position: sticky; }
+
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+
+// ── Sizing Utilities ──────────────────
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+// ── Overflow ──────────────────────────
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-scroll { overflow: scroll; }
+
+// ── Cursor / Interaction ──────────────
+.pointer { cursor: pointer; }
+.select-none { user-select: none; }
+
+// ── Display ───────────────────────────
+.block { display: block; }
+.inline-block { display: inline-block; }
+.inline { display: inline; }
+.hidden { display: none; }
+
+// ── Visibility ────────────────────────
+.visible { visibility: visible; }
+.invisible { visibility: hidden; }
+
+// ── Opacity ───────────────────────────
+.opacity-50 { opacity: 0.5; }
+.opacity-80 { opacity: 0.8; }
+.opacity-100 { opacity: 1; }

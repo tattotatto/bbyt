@@ -1,0 +1,33 @@
+# Dependencies / Build output
+node_modules/
+dist/
+*.tar.gz
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Env & secrets
+.env
+.env.local
+
+# Runtime data
+uploads/
+*.db
+*.sqlite
+
+# Admin/miniapp build artifacts
+admin/dist/
+miniapp/dist/
+backend/admin-dist/
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# SDD workspace (plan scratch)
+.superpowers/

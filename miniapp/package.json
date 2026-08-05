@@ -1,0 +1,24 @@
+{
+  "name": "hxmall-miniapp",
+  "version": "1.0.0",
+  "description": "B2B儿童产品批发商城 - 微信小程序",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "vue3",
+    "@dcloudio/uni-mp-weixin": "vue3",
+    "@dcloudio/vite-plugin-uni": "vue3",
+    "pinia": "^2.1.7",
+    "uview-plus": "^3.1.0",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.0",
+    "sass": "^1.69.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vue-tsc": "^1.8.0"
+  }
+}

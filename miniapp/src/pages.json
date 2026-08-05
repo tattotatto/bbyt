@@ -1,0 +1,135 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "HX Mall",
+        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/ai-assistant/index",
+      "style": {
+        "navigationBarTitleText": "小暖AI",
+        "navigationStyle": "custom",
+        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/cases/index",
+      "style": {
+        "navigationBarTitleText": "设计案例",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/cases/detail",
+      "style": {
+        "navigationBarTitleText": "案例详情",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/products/index",
+      "style": {
+        "navigationBarTitleText": "商品列表",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/products/detail",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/order/list",
+      "style": {
+        "navigationBarTitleText": "我的订单",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/order/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/order/checkout",
+      "style": {
+        "navigationBarTitleText": "确认订单",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#7a6a5a",
+    "selectedColor": "#FF7B7B",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/ai-assistant/index",
+        "text": "小暖AI",
+        "iconPath": "static/icons/ai.png",
+        "selectedIconPath": "static/icons/ai-active.png"
+      },
+      {
+        "pagePath": "pages/cases/index",
+        "text": "案例",
+        "iconPath": "static/icons/cases.png",
+        "selectedIconPath": "static/icons/cases-active.png"
+      },
+      {
+        "pagePath": "pages/products/index",
+        "text": "商品",
+        "iconPath": "static/icons/products.png",
+        "selectedIconPath": "static/icons/products-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/icons/mine.png",
+        "selectedIconPath": "static/icons/mine-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "HX Mall",
+    "navigationBarBackgroundColor": "#FFF8F0",
+    "backgroundColor": "#FFF8F0"
+  }
+}
