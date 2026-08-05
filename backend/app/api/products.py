@@ -21,6 +21,28 @@ import json
 router = APIRouter()
 
 
+# ── Helper ──
+def _to_product_list_items(products) -> list[ProductListOut]:
+    """将 Product ORM 对象列表转为 ProductListOut（含 price_min/price_max）"""
+    items = []
+    for p in products:
+        price_min, price_max = get_price_range(p.pricing_rules)
+        items.append(ProductListOut(
+            id=p.id,
+            name=p.name,
+            images=p.images or [],
+            age_range=p.age_range,
+            safety_certifications=p.safety_certifications or [],
+            is_virtual=p.is_virtual,
+            stock=p.stock,
+            min_order_qty=p.min_order_qty,
+            status=p.status.value if hasattr(p.status, 'value') else str(p.status),
+            price_min=price_min,
+            price_max=price_max,
+        ))
+    return items
+
+
 # ═══════════════ 品类 API ═══════════════
 
 @router.get("/categories", response_model=APIResponse[list[CategoryOut]], summary="品类树")
@@ -56,7 +78,40 @@ async def create_category(
 
 # ═══════════════ 商品 API ═══════════════
 
+@router.get("/hot", response_model=APIResponse[list[ProductListOut]], summary="热门商品")
+async def hot_products(
+    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回销量最高的在售商品"""
+    result = await db.execute(
+        select(Product)
+        .where(Product.status == ProductStatus.ON_SALE)
+        .order_by(Product.sales_count.desc())
+        .limit(limit)
+    )
+    products = result.scalars().all()
+    return APIResponse.ok(data=_to_product_list_items(products))
+
+
+@router.get("/new", response_model=APIResponse[list[ProductListOut]], summary="新品")
+async def new_products(
+    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """返回最新上架的在售商品"""
+    result = await db.execute(
+        select(Product)
+        .where(Product.status == ProductStatus.ON_SALE)
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+    )
+    products = result.scalars().all()
+    return APIResponse.ok(data=_to_product_list_items(products))
+
+
 @router.get("/", response_model=APIResponse[PaginatedResponse[ProductListOut]], summary="商品列表")
+@router.get("", response_model=APIResponse[PaginatedResponse[ProductListOut]], summary="商品列表", include_in_schema=False)
 async def list_products(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -65,11 +120,13 @@ async def list_products(
     is_virtual: bool | None = Query(None),
     status_filter: str | None = Query("on_sale", alias="status"),
     keyword: str | None = Query(None, description="搜索关键词"),
+    sort: str = Query("newest", description="排序: newest|sales_desc|price_asc|price_desc"),
     db: AsyncSession = Depends(get_db),
 ):
-    # Redis 缓存（仅首页无筛选时用缓存）
-    cache_key = f"products:list:{category_id}:{age_range}:{keyword}:{page}:{page_size}"
-    if redis_module.redis_client:
+    # Redis 缓存（仅默认排序无筛选时用缓存；price 排序因在内存进行不缓存）
+    use_cache = sort in ("newest", "sales_desc")
+    cache_key = f"products:list:{category_id}:{age_range}:{keyword}:{page}:{page_size}:{sort}"
+    if use_cache and redis_module.redis_client:
         cached = await redis_module.redis_client.get(cache_key)
         if cached:
             return APIResponse.ok(data=json.loads(cached))
@@ -101,34 +158,49 @@ async def list_products(
     total = total_result.scalar() or 0
 
     offset = (page - 1) * page_size
+
+    # 价格排序：先在内存中按 price_min 排序，再分页
+    # 注意：为保证性能，候选窗口上限 200 条；超出窗口的价格排序不保证绝对精度
+    if sort in ("price_asc", "price_desc"):
+        candidate_limit = 200
+        reverse = sort == "price_desc"
+        result = await db.execute(
+            base_query.order_by(Product.created_at.desc()).limit(candidate_limit)
+        )
+        products = result.scalars().all()
+        # 在内存按 price_min 排序
+        products = sorted(
+            products,
+            key=lambda p: get_price_range(p.pricing_rules)[0] or 0,
+            reverse=reverse,
+        )
+        # 手动分页
+        products = products[offset:offset + page_size]
+        items = _to_product_list_items(products)
+        response_data = APIResponse.ok(data=PaginatedResponse(
+            items=items, total=min(total, candidate_limit), page=page, page_size=page_size
+        ))
+        return response_data
+
+    # 数据库排序 newest / sales_desc
+    if sort == "sales_desc":
+        order_col = Product.sales_count.desc()
+    else:
+        order_col = Product.created_at.desc()
+
     result = await db.execute(
-        base_query.order_by(Product.created_at.desc()).offset(offset).limit(page_size)
+        base_query.order_by(order_col).offset(offset).limit(page_size)
     )
     products = result.scalars().all()
 
-    items = []
-    for p in products:
-        price_min, price_max = get_price_range(p.pricing_rules)
-        items.append(ProductListOut(
-            id=p.id,
-            name=p.name,
-            images=p.images or [],
-            age_range=p.age_range,
-            safety_certifications=p.safety_certifications or [],
-            is_virtual=p.is_virtual,
-            stock=p.stock,
-            min_order_qty=p.min_order_qty,
-            status=p.status.value if hasattr(p.status, 'value') else str(p.status),
-            price_min=price_min,
-            price_max=price_max,
-        ))
+    items = _to_product_list_items(products)
 
     response_data = APIResponse.ok(data=PaginatedResponse(
         items=items, total=total, page=page, page_size=page_size
     ))
 
     # 查询后缓存5分钟
-    if redis_module.redis_client and items:
+    if use_cache and redis_module.redis_client and items:
         await redis_module.redis_client.setex(cache_key, 300, response_data.model_dump_json())
 
     return response_data
