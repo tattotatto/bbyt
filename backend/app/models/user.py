@@ -32,6 +32,8 @@ class User(Base, TimestampMixin):
 
     phone: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=False, comment="手机号")
     wx_openid: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, comment="微信OpenID")
+    nickname: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="用户昵称")
+    avatar: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="头像URL")
     hashed_password: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.RETAILER, nullable=False)
     level: Mapped[RetailerLevel] = mapped_column(SAEnum(RetailerLevel), default=RetailerLevel.NORMAL, nullable=False, comment="零售商等级")

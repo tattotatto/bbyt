@@ -8,3 +8,7 @@ from app.models.order import (
 from app.models.knowledge import KnowledgeEntry
 from app.models.bill import CreditBill, BillStatus
 from app.models.promotion import Promotion, PromotionType
+from app.models.cart import CartItem
+from app.models.address import Address
+from app.models.history import BrowseHistory
+from app.models.favorite import Favorite

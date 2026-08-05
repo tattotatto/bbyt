@@ -49,6 +49,7 @@ class Product(Base, TimestampMixin):
     virtual_detail: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, comment="虚拟商品详情: {area,style,budget}"
     )
+    sales_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="销量")
     stock: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="库存（虚拟商品为null）")
     min_order_qty: Mapped[int] = mapped_column(Integer, default=10, comment="最低起批量")
     pricing_rules: Mapped[dict] = mapped_column(JSON, nullable=False, comment="阶梯定价矩阵")

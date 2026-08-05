@@ -31,6 +31,7 @@ class OrderStatus(str, enum.Enum):
     CONFIRMED = "confirmed"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    REFUNDING = "refunding"
 
 
 class DesignProgress(str, enum.Enum):
