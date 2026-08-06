@@ -45,7 +45,8 @@ async def update_retailer_profile(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
-    # 若无 profile 则新建（必填字段给默认空字符串，后续由 update_data 覆盖传入字段）
+    # 若无 profile 则新建。RetailerProfile 三个字段（company_name/business_license/contact_person）
+    # 均为 NOT NULL，auto-create 时未提供的字段默认为空字符串，由后续更新逐步填全。
     if not user.retailer_profile:
         user.retailer_profile = RetailerProfile(
             user_id=user.id,
@@ -56,6 +57,8 @@ async def update_retailer_profile(
         db.add(user.retailer_profile)
 
     update_data = req.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="至少提供一个字段")
     for field, value in update_data.items():
         setattr(user.retailer_profile, field, value)
 

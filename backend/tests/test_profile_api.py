@@ -28,6 +28,7 @@ async def test_update_profile_partial(client, db_session):
     data = r2.json()["data"]["retailer_profile"]
     assert data["company_name"] == "星辰贸易"  # 已存在字段不受影响
     assert data["contact_person"] == "王五"
+    assert data["business_license"] == "BL2026"
 
 
 @pytest.mark.asyncio
@@ -42,3 +43,11 @@ async def test_update_profile_rejects_non_retailer(client, db_session):
 async def test_update_profile_requires_auth(client, db_session):
     res = await client.put("/api/v1/users/me/profile", json={"company_name": "x"})
     assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_profile_empty_body(client, db_session):
+    u, token = await _mk_user(db_session, "13900000063")
+    res = await client.put("/api/v1/users/me/profile",
+                           json={}, headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 400
