@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User, UserStatus, RetailerLevel, RetailerProfile
-from app.schemas.user import UserOut, UserListOut, ReviewRetailerRequest
+from app.schemas.user import UserOut, UserListOut, ReviewRetailerRequest, RetailerProfileUpdate
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.api.deps import get_current_user, get_current_admin, require_role
 
@@ -23,6 +23,43 @@ async def get_me(current_user: dict = Depends(get_current_user), db: AsyncSessio
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    return APIResponse.ok(data=UserOut.model_validate(user))
+
+
+@router.put("/me/profile", response_model=APIResponse[UserOut], summary="更新企业资料（零售商）")
+async def update_retailer_profile(
+    req: RetailerProfileUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """部分更新当前零售商的企业资料；未传字段保持不变。无 profile 时自动创建。"""
+    if current_user["role"] != "retailer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅零售商可更新企业资料")
+
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.retailer_profile))
+        .where(User.id == current_user["user_id"])
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    # 若无 profile 则新建（必填字段给默认空字符串，后续由 update_data 覆盖传入字段）
+    if not user.retailer_profile:
+        user.retailer_profile = RetailerProfile(
+            user_id=user.id,
+            company_name="",
+            business_license="",
+            contact_person="",
+        )
+        db.add(user.retailer_profile)
+
+    update_data = req.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(user.retailer_profile, field, value)
+
+    await db.flush()
     return APIResponse.ok(data=UserOut.model_validate(user))
 
 

@@ -78,6 +78,13 @@ class ReviewRetailerRequest(BaseModel):
     reject_reason: str | None = Field(None, max_length=500)
 
 
+# ── Retailer Profile Update ──
+class RetailerProfileUpdate(BaseModel):
+    company_name: str | None = None
+    business_license: str | None = None
+    contact_person: str | None = None
+
+
 # ── WeChat Login ──
 class WxUserInfo(BaseModel):
     nickName: str | None = None
