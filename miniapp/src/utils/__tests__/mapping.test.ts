@@ -28,6 +28,11 @@ describe('formatCents', () => {
     expect(formatCents(99)).toBe('¥0.99')
     expect(formatCents(123456)).toBe('¥1234.56')
   })
+  it('rounds float cents before conversion', () => {
+    expect(formatCents(19.9)).toBe('¥0.20')
+    expect(formatCents(100.4)).toBe('¥1.00')
+    expect(formatCents(199.6)).toBe('¥2.00')
+  })
 })
 
 describe('parsePriceRange', () => {
