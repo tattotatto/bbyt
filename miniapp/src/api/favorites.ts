@@ -1,5 +1,5 @@
 import http from './request'
-import type { Paginated } from './products'
+import type { Paginated } from './types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface FavoriteItemOut {

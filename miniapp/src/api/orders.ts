@@ -1,21 +1,15 @@
 import http from './request'
-import type { Paginated } from './products'
+import type { Paginated } from './types'
 
 // ── Order types ───────────────────────────────────────────────────────────────
 export interface OrderItem {
-  product_id: string; name: string; qty: number; unit_price: number; subtotal: number; image?: string | null;
-  // @deprecated backward-compat
-  product_name?: string; product_image?: string; spec?: string; quantity?: number; total_price?: number
+  product_id: string; name: string; qty: number; unit_price: number; subtotal: number; image?: string | null
 }
 export interface Order {
   id: string; order_no: string; type: string; retailer_id: string; items: OrderItem[];
   total_amount: number; payment_method: string | null; payment_status: string; status: string;
   receiver_name?: string | null; receiver_phone?: string | null; receiver_address?: string | null;
-  remark?: string | null; timeline?: unknown[]; created_at?: string | null;
-  // @deprecated backward-compat
-  status_label?: string; shipping_address?: { name: string; phone: string; province: string; city: string; district: string; detail: string } | null;
-  tracking_no?: string; discount_amount?: number; final_amount?: number;
-  shipping_method?: string; paid_at?: string; shipped_at?: string; completed_at?: string
+  remark?: string | null; timeline?: unknown[]; created_at?: string | null
 }
 export interface CreateOrderParams {
   items: { product_id: string; name: string; qty: number; unit_price: number; subtotal: number }[];

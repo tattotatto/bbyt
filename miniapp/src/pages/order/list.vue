@@ -58,7 +58,7 @@
           <text
             class="order-status"
             :style="{ color: getStatusInfo(order.status).color, background: getStatusInfo(order.status).bg }"
-          >{{ order.status_label || getStatusInfo(order.status).label }}</text>
+          >{{ getStatusInfo(order.status).label }}</text>
         </view>
 
         <!-- Items -->
@@ -69,25 +69,24 @@
           @tap="goToDetail(order.id)"
         >
           <image
-            v-if="item.product_image"
-            :src="item.product_image"
+            v-if="item.image"
+            :src="item.image"
             class="item-img"
             mode="aspectFill"
           />
           <view v-else :class="['item-img-placeholder', getPlaceholderClass(item.product_id)]" />
           <view class="item-info">
-            <text class="item-name">{{ item.product_name }}</text>
-            <text class="item-spec">{{ item.spec }}</text>
+            <text class="item-name">{{ item.name }}</text>
             <view class="item-bottom-row">
               <text class="item-price">{{ formatPrice(item.unit_price) }}</text>
-              <text class="item-qty">x{{ item.quantity }}</text>
+              <text class="item-qty">x{{ item.qty }}</text>
             </view>
           </view>
         </view>
 
         <!-- Bottom Action Row -->
         <view class="order-bottom">
-          <text class="order-total">合计：{{ formatPrice(order.final_amount ?? order.total_amount) }}</text>
+          <text class="order-total">合计：{{ formatPrice(order.total_amount) }}</text>
           <view class="order-actions">
             <!-- Status: pending_payment -->
             <template v-if="order.status === 'pending_payment' || order.status === '0' ">
@@ -190,6 +189,12 @@ function getStatusInfo(status: string | number): { label: string; color: string;
     ['completed']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
     ['cancelled']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
     ['refunding']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['0']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['1']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
+    ['2']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
+    ['3']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
+    ['4']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
+    ['5']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
   }
   return map[s] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
 }

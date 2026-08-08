@@ -30,31 +30,23 @@
       <view class="status-header" :style="{ background: getStatusInfo(order.status).bg }">
         <text class="status-icon">{{ statusIcon }}</text>
         <text class="status-text" :style="{ color: getStatusInfo(order.status).color }">
-          {{ order.status_label || getStatusInfo(order.status).label }}
+          {{ getStatusInfo(order.status).label }}
         </text>
         <text class="status-sub">{{ statusSubText }}</text>
       </view>
 
-      <!-- Shipping Address Card -->
-      <view v-if="order.shipping_address" class="address-card">
+      <!-- Receiver Info Card -->
+      <view v-if="order.receiver_name" class="address-card">
         <view class="address-row">
           <text class="address-icon">📍</text>
           <view class="address-info">
             <view class="address-contact">
-              <text class="address-name">{{ order.shipping_address.name }}</text>
-              <text class="address-phone">{{ maskPhone(order.shipping_address.phone) }}</text>
+              <text class="address-name">{{ order.receiver_name }}</text>
+              <text class="address-phone">{{ order.receiver_phone ? maskPhone(order.receiver_phone) : '' }}</text>
             </view>
             <text class="address-detail">
-              {{ order.shipping_address.province }}{{ order.shipping_address.city }}{{ order.shipping_address.district }} {{ order.shipping_address.detail }}
+              {{ order.receiver_address || '' }}
             </text>
-          </view>
-        </view>
-        <!-- Tracking Info -->
-        <view v-if="order.tracking_no" class="tracking-row">
-          <text class="tracking-label">物流单号</text>
-          <view class="tracking-value-row">
-            <text class="tracking-value">{{ order.tracking_no }}</text>
-            <text class="tracking-copy" @tap="copyTrackingNo">复制</text>
           </view>
         </view>
       </view>
@@ -67,18 +59,17 @@
           class="item-row"
         >
           <image
-            v-if="item.product_image"
-            :src="item.product_image"
+            v-if="item.image"
+            :src="item.image"
             class="item-img"
             mode="aspectFill"
           />
           <view v-else :class="['item-img-placeholder', getPlaceholderClass(item.product_id)]" />
           <view class="item-info">
-            <text class="item-name">{{ item.product_name }}</text>
-            <text class="item-spec">{{ item.spec }}</text>
+            <text class="item-name">{{ item.name }}</text>
             <view class="item-price-row">
               <text class="item-price">{{ formatPrice(item.unit_price) }}</text>
-              <text class="item-qty">x{{ item.quantity }}</text>
+              <text class="item-qty">x{{ item.qty }}</text>
             </view>
           </view>
         </view>
@@ -94,13 +85,9 @@
           <text class="price-label">运费</text>
           <text class="price-value">免运费</text>
         </view>
-        <view v-if="order.discount_amount && order.discount_amount > 0" class="price-row">
-          <text class="price-label">会员折扣</text>
-          <text class="price-value price-value--discount">-{{ formatPrice(order.discount_amount ?? 0) }}</text>
-        </view>
         <view class="price-row price-row--total">
           <text class="price-label price-label--total">实付款</text>
-          <text class="price-value price-value--total">{{ formatPrice(order.final_amount ?? order.total_amount) }}</text>
+          <text class="price-value price-value--total">{{ formatPrice(order.total_amount) }}</text>
         </view>
       </view>
 
@@ -116,28 +103,6 @@
         <view class="info-row">
           <text class="info-label">下单时间</text>
           <text class="info-value">{{ order.created_at ? formatDate(order.created_at) : '' }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-label">支付时间</text>
-          <text class="info-value" :class="{ 'info-value--muted': !order.paid_at }">
-            {{ order.paid_at ? formatDate(order.paid_at) : '未支付' }}
-          </text>
-        </view>
-        <view v-if="order.shipped_at" class="info-row">
-          <text class="info-label">发货时间</text>
-          <text class="info-value" :class="{ 'info-value--muted': !order.shipped_at }">
-            {{ order.shipped_at ? formatDate(order.shipped_at) : '未发货' }}
-          </text>
-        </view>
-        <view v-if="order.completed_at" class="info-row">
-          <text class="info-label">完成时间</text>
-          <text class="info-value" :class="{ 'info-value--muted': !order.completed_at }">
-            {{ order.completed_at ? formatDate(order.completed_at) : '未完成' }}
-          </text>
-        </view>
-        <view v-if="order.shipping_method" class="info-row">
-          <text class="info-label">配送方式</text>
-          <text class="info-value">{{ order.shipping_method }}</text>
         </view>
         <view class="info-row">
           <text class="info-label">备注</text>
@@ -313,16 +278,6 @@ function copyOrderNo() {
   if (!order.value) return
   uni.setClipboardData({
     data: order.value.order_no,
-    success: () => {
-      showSuccess('已复制')
-    },
-  })
-}
-
-function copyTrackingNo() {
-  if (!order.value?.tracking_no) return
-  uni.setClipboardData({
-    data: order.value.tracking_no,
     success: () => {
       showSuccess('已复制')
     },
@@ -530,43 +485,6 @@ function handleRefundOrder() {
   line-height: 1.5;
 }
 
-/* Tracking Info */
-.tracking-row {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  border-top: 1px solid #f5f5f5;
-}
-
-.tracking-label {
-  font-size: 26rpx;
-  color: #7a6a5a;
-  flex-shrink: 0;
-}
-
-.tracking-value-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.tracking-value {
-  font-size: 26rpx;
-  color: #4a3728;
-}
-
-.tracking-copy {
-  font-size: 22rpx;
-  color: #FF7B7B;
-  margin-left: 16rpx;
-  padding: 4rpx 12rpx;
-  border: 1px solid #FF7B7B;
-  border-radius: 8px;
-}
-
 /* ===== Items Card ===== */
 .items-card {
   background: #ffffff;
@@ -623,11 +541,6 @@ function handleRefundOrder() {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.item-spec {
-  font-size: 24rpx;
-  color: #7a6a5a;
 }
 
 .item-price-row {

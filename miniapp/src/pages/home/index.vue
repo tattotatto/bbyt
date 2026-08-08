@@ -291,7 +291,7 @@ async function fetchBanners() {
       gradient: BANNER_GRADIENTS[i % BANNER_GRADIENTS.length],
       emoji: BANNER_EMOJIS[i % BANNER_EMOJIS.length],
       title: p.name,
-      desc: (p as any).description ? (p as any).description.slice(0, 20) : `${p.age_range || ''} · 爆款热销`
+      desc: `${p.age_range || p.name || ''} · 爆款热销`
     }))
   } catch {
     // Banner failure is non-critical; use fallback

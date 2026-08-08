@@ -57,8 +57,8 @@
 
         <view class="price-row">
           <text class="price-text">
-            {{ formatPrice((product as any).price_min ?? product.price_min ?? 0) }}
-            <text v-if="(product as any).price_min !== (product as any).price_max"> - {{ formatPrice((product as any).price_max ?? product.price_max ?? 0) }}</text>
+            {{ formatPrice((product as any).price_min ?? 0) }}
+            <text v-if="(product as any).price_min !== (product as any).price_max"> - {{ formatPrice((product as any).price_max ?? 0) }}</text>
           </text>
         </view>
 
@@ -113,10 +113,10 @@
       <view v-if="(product.specs as any) && ((product.specs as any).length > 0 || Object.keys(product.specs!).length > 0)" class="section-divider" />
 
       <!-- Price Table -->
-      <view v-if="(product.price_tiers && product.price_tiers.length > 0) || Object.keys(product.pricing_rules || {}).length > 0" class="section">
+      <view v-if="((product as any).price_tiers && (product as any).price_tiers.length > 0) || Object.keys(product.pricing_rules || {}).length > 0" class="section">
         <text class="section-title">批发价格表</text>
         <PriceTable
-          :pricingRules="(product.price_tiers as any) || product.pricing_rules"
+          :pricingRules="(product as any).price_tiers || product.pricing_rules"
           :userLevel="userStore.userLevel"
           :qty="quantity"
         />
@@ -160,7 +160,7 @@
         <text class="section-title">商品详情</text>
         <text class="desc-text">{{ product.description }}</text>
         <image
-          v-for="(img, i) in (product.detail_images || [])"
+          v-for="(img, i) in ((product as any).detail_images || [])"
           :key="'desc-' + i"
           :src="img"
           mode="widthFix"
@@ -227,7 +227,7 @@ const allImages = computed(() => {
   if (!product.value) return []
   return [
     ...(product.value.images || []),
-    ...(product.value.detail_images || [])
+    ...((product.value as any).detail_images || [])
   ]
 })
 
@@ -302,7 +302,7 @@ function addToCart() {
     productName: product.value.name,
     productImage: product.value.images?.[0] || '',
     spec: getSelectedSpec(),
-    unitPrice: (product.value as any).price_min ?? product.value.price_min ?? 0,
+    unitPrice: (product.value as any).price_min ?? 0,
     quantity: quantity.value,
     stock: product.value.stock ?? 0,
     minOrderQty: (product.value as any).moq ?? product.value.min_order_qty
