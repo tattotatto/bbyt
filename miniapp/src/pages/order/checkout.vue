@@ -78,21 +78,21 @@
         <text class="section-title">支付方式</text>
         <view
           class="payment-option"
-          :class="{ active: paymentMethod === 'wechat' }"
-          @tap="paymentMethod = 'wechat'"
+          :class="{ active: paymentMethod === 'wechat_pay' }"
+          @tap="paymentMethod = 'wechat_pay'"
         >
-          <view class="radio" :class="{ checked: paymentMethod === 'wechat' }" />
+          <view class="radio" :class="{ checked: paymentMethod === 'wechat_pay' }" />
           <text class="method-icon">💚</text>
           <text class="method-label">微信支付</text>
         </view>
         <view
           class="payment-option"
-          :class="{ active: paymentMethod === 'balance' }"
-          @tap="paymentMethod = 'balance'"
+          :class="{ active: paymentMethod === 'bank_transfer' }"
+          @tap="paymentMethod = 'bank_transfer'"
         >
-          <view class="radio" :class="{ checked: paymentMethod === 'balance' }" />
-          <text class="method-icon">💰</text>
-          <text class="method-label">余额支付</text>
+          <view class="radio" :class="{ checked: paymentMethod === 'bank_transfer' }" />
+          <text class="method-icon">🏦</text>
+          <text class="method-label">银行转账（上传凭证）</text>
         </view>
       </view>
 
@@ -105,10 +105,6 @@
         <view class="price-row">
           <text class="price-label">运费</text>
           <text class="price-value">{{ freight > 0 ? formatPrice(freight) : '免运费' }}</text>
-        </view>
-        <view v-if="userStore.isLoggedIn && discountAmount > 0" class="price-row">
-          <text class="price-label">会员折扣 (-{{ discountPercent }}%)</text>
-          <text class="price-value price-discount">-{{ formatPrice(discountAmount) }}</text>
         </view>
         <view class="price-row price-row--total">
           <text class="price-label">合计</text>
@@ -144,6 +140,7 @@ import { useUserStore } from '../../stores/user'
 import { useCartStore } from '../../stores/cart'
 import {
   formatPrice,
+  buildOrderItems,
   showSuccess,
   showError,
   showLoading,
@@ -157,7 +154,7 @@ const cartStore = useCartStore()
 const addresses = ref<Address[]>([])
 const selectedAddress = ref<Address | null>(null)
 const remark = ref('')
-const paymentMethod = ref('wechat')
+const paymentMethod = ref('wechat_pay')
 const submitting = ref(false)
 const loading = ref(true)
 
@@ -171,18 +168,8 @@ const subtotal = computed(() =>
 
 const freight = computed(() => (subtotal.value >= 99 ? 0 : 8))
 
-const discountPercent = computed(() =>
-  Math.round((1 - userStore.discountRate) * 100)
-)
-
-const discountAmount = computed(() =>
-  parseFloat((subtotal.value * (1 - userStore.discountRate)).toFixed(2))
-)
-
 const finalTotal = computed(() =>
-  parseFloat(
-    Math.max(0, subtotal.value + freight.value - discountAmount.value).toFixed(2)
-  )
+  parseFloat((subtotal.value + freight.value).toFixed(2))
 )
 
 // ── Data Loading ─────────────────────────────────
@@ -269,13 +256,7 @@ async function submitOrder() {
   try {
     const addr = selectedAddress.value!
     const res = await createOrder({
-      items: checkoutItems.value.map((item: any) => ({
-        product_id: item.productId,
-        name: item.productName || '',
-        qty: item.quantity,
-        unit_price: item.unitPrice,
-        subtotal: parseFloat((item.unitPrice * item.quantity).toFixed(2)),
-      })),
+      items: buildOrderItems(checkoutItems.value),
       payment_method: paymentMethod.value,
       remark: remark.value || undefined,
       receiver_name: addr.name,

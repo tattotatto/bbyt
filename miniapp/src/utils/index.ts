@@ -325,6 +325,43 @@ export function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || ''
 }
 
+// ── Cart → Order Items Mapping ──────────────────────
+
+/** Input shape from cart store getCheckoutItems() */
+export interface CartCheckoutItem {
+  productId: string
+  productName: string
+  productImage?: string
+  spec?: string
+  quantity: number
+  unitPrice: number
+}
+
+/** Output shape matching backend OrderCreate.items */
+export interface OrderCreateItem {
+  product_id: string
+  name: string
+  qty: number
+  unit_price: number
+  subtotal: number
+  image?: string
+}
+
+/**
+ * Map cart checkout items to backend order item shape.
+ * Spec is appended to name as "productName / spec" when present.
+ */
+export function buildOrderItems(items: CartCheckoutItem[]): OrderCreateItem[] {
+  return items.map((item) => ({
+    product_id: item.productId,
+    name: item.spec ? `${item.productName} / ${item.spec}` : item.productName,
+    qty: item.quantity,
+    unit_price: item.unitPrice,
+    subtotal: parseFloat((item.unitPrice * item.quantity).toFixed(2)),
+    ...(item.productImage ? { image: item.productImage } : {}),
+  }))
+}
+
 // ── Deep Clone ─────────────────────────────────────
 
 /**

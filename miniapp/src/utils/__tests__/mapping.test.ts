@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { orderStatusLabel, orderStatusColor, formatCents, parsePriceRange } from '../mapping'
+import { buildOrderItems } from '../index'
 
 describe('orderStatusLabel', () => {
   it('maps backend string status to Chinese label', () => {
@@ -61,5 +62,18 @@ describe('parsePriceRange', () => {
       ],
     }
     expect(parsePriceRange(rules)).toEqual({ min: 16, max: 25 })
+  })
+})
+
+describe('buildOrderItems', () => {
+  it('maps cart items to backend order item shape', () => {
+    const out = buildOrderItems([
+      { productId: 'p1', productName: '泳圈', productImage: 'img.png', spec: '红色', quantity: 5, unitPrice: 35 },
+    ])
+    expect(out[0]).toEqual({ product_id: 'p1', name: '泳圈 / 红色', qty: 5, unit_price: 35, subtotal: 175, image: 'img.png' })
+  })
+  it('handles no spec', () => {
+    const out = buildOrderItems([{ productId: 'p1', productName: '泳圈', productImage: '', quantity: 2, unitPrice: 30 }])
+    expect(out[0].name).toBe('泳圈')
   })
 })
