@@ -14,16 +14,6 @@ export const STORAGE_KEYS = {
   SEARCH_HISTORY: 'hxmall_search_history'
 } as const
 
-// ── Order Status ───────────────────────────
-export const ORDER_STATUS = {
-  PENDING_PAYMENT: { code: 0, label: '待付款', color: '#FF7B7B' },
-  PENDING_SHIPPING: { code: 1, label: '待发货', color: '#FFD93D' },
-  SHIPPED: { code: 2, label: '已发货', color: '#7EC8E3' },
-  COMPLETED: { code: 3, label: '已完成', color: '#A8D8B9' },
-  CANCELLED: { code: 4, label: '已取消', color: '#7a6a5a' },
-  REFUNDING: { code: 5, label: '退款中', color: '#FF7B7B' }
-} as const
-
 // ── User Levels ────────────────────────────
 export const USER_LEVELS = {
   NORMAL: { level: 0, label: '普通会员', discount: 1 },

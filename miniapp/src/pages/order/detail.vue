@@ -27,10 +27,10 @@
     <!-- 4. Order Detail Content -->
     <template v-else>
       <!-- Status Header Banner -->
-      <view class="status-header" :style="{ background: getStatusInfo(order.status).bg }">
+      <view class="status-header" :style="{ background: statusBg(order.status) }">
         <text class="status-icon">{{ statusIcon }}</text>
-        <text class="status-text" :style="{ color: getStatusInfo(order.status).color }">
-          {{ getStatusInfo(order.status).label }}
+        <text class="status-text" :style="{ color: orderStatusColor(order.status) }">
+          {{ orderStatusLabel(order.status) }}
         </text>
         <text class="status-sub">{{ statusSubText }}</text>
       </view>
@@ -79,7 +79,7 @@
       <view class="price-card">
         <view class="price-row">
           <text class="price-label">商品总额</text>
-          <text class="price-value">{{ formatPrice(order.total_amount) }}</text>
+          <text class="price-value">{{ formatCents(order.total_amount) }}</text>
         </view>
         <view class="price-row">
           <text class="price-label">运费</text>
@@ -87,7 +87,7 @@
         </view>
         <view class="price-row price-row--total">
           <text class="price-label price-label--total">实付款</text>
-          <text class="price-value price-value--total">{{ formatPrice(order.total_amount) }}</text>
+          <text class="price-value price-value--total">{{ formatCents(order.total_amount) }}</text>
         </view>
       </view>
 
@@ -112,6 +112,19 @@
         </view>
       </view>
 
+      <!-- Timeline (if available) -->
+      <view v-if="order.timeline && order.timeline.length > 0" class="timeline-card">
+        <view class="timeline-title">订单跟踪</view>
+        <view v-for="(entry, idx) in order.timeline" :key="idx" class="timeline-entry">
+          <view class="timeline-dot" />
+          <view v-if="idx < order.timeline.length - 1" class="timeline-line" />
+          <view class="timeline-content">
+            <text class="timeline-text">{{ (entry as any).description || (entry as any).event || '' }}</text>
+            <text class="timeline-time">{{ (entry as any).time ? formatDate((entry as any).time) : '' }}</text>
+          </view>
+        </view>
+      </view>
+
       <!-- Bottom Spacer -->
       <view class="bottom-spacer" />
 
@@ -119,39 +132,33 @@
       <view class="bottom-bar">
         <view class="bottom-actions">
           <!-- Status: pending_payment -->
-          <template v-if="order.status === 'pending_payment' || order.status === '0' ">
+          <template v-if="order.status === 'pending_payment'">
             <view class="btn-border" hover-class="btn-hover" @tap="handleCancelOrder">
               <text class="btn-border-text">取消订单</text>
             </view>
-            <view class="btn-solid" hover-class="btn-solid-hover" @tap="handlePayOrder">
-              <text class="btn-solid-text">立即付款</text>
-            </view>
           </template>
-          <!-- Status: pending_shipping -->
-          <template v-else-if="order.status === 'pending_shipping' || order.status === '1' ">
+          <!-- Status: paid -->
+          <template v-else-if="order.status === 'paid'">
             <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder">
               <text class="btn-border-text">申请退款</text>
             </view>
-            <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleRemindShip">
-              <text class="btn-solid-text">提醒发货</text>
-            </view>
           </template>
           <!-- Status: shipped -->
-          <template v-else-if="order.status === 'shipped' || order.status === '2' ">
-            <view class="btn-border" hover-class="btn-hover" @tap="handleViewLogistics">
-              <text class="btn-border-text">查看物流</text>
+          <template v-else-if="order.status === 'shipped'">
+            <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder">
+              <text class="btn-border-text">申请退款</text>
             </view>
             <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleConfirmReceive">
               <text class="btn-solid-text">确认收货</text>
             </view>
           </template>
-          <!-- Status: completed -->
-          <template v-else-if="order.status === 'completed' || order.status === '3' ">
+          <!-- Status: confirmed / completed -->
+          <template v-else-if="order.status === 'confirmed' || order.status === 'completed'">
             <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleBuyAgain">
               <text class="btn-solid-text">再次购买</text>
             </view>
           </template>
-          <!-- Status: cancelled/refunding -->
+          <!-- Status: cancelled / refunding / other -->
           <template v-else>
             <view class="btn-solid btn-solid--muted" hover-class="btn-solid-hover" @tap="handleBuyAgain">
               <text class="btn-solid-text">再次购买</text>
@@ -168,10 +175,10 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { getOrderDetail, cancelOrder, confirmReceipt } from '../../api/orders'
+import { getOrderDetail, cancelOrder, confirmReceipt, requestRefund } from '../../api/orders'
 import type { Order } from '../../api/orders'
 import { formatPrice, formatDate, maskPhone, showSuccess, showError, showLoading, hideLoading } from '../../utils/index'
-import { ORDER_STATUS } from '../../utils/constants'
+import { orderStatusLabel, orderStatusColor, formatCents } from '../../utils/mapping'
 
 // ── State ─────────────────────────────────────
 const order = ref<Order | null>(null)
@@ -179,23 +186,17 @@ const loading = ref<boolean>(true)
 const errorMsg = ref<string>('')
 
 // ── Status Helpers ────────────────────────────
-function getStatusInfo(status: string | number): { label: string; color: string; bg: string } {
-  const s = String(status)
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    ['pending_payment']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['pending_shipping']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    ['shipped']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    ['completed']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    ['cancelled']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    ['refunding']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['0']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['1']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    ['2']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    ['3']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    ['4']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    ['5']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+function statusBg(status: string): string {
+  const map: Record<string, string> = {
+    pending_payment: '#FFF0F0',
+    paid: '#FFF8F0',
+    shipped: '#F0F8FB',
+    confirmed: '#F2FAF5',
+    completed: '#F2FAF5',
+    cancelled: '#F5F5F5',
+    refunding: '#FFF0F0',
   }
-  return map[s] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
+  return map[status] || '#F5F5F5'
 }
 
 function getPlaceholderClass(id: string | number): string {
@@ -207,36 +208,30 @@ function getPlaceholderClass(id: string | number): string {
 // ── Computed ──────────────────────────────────
 const statusIcon = computed(() => {
   if (!order.value) return '📦'
-  const s = String(order.value.status)
   const icons: Record<string, string> = {
-    ['pending_payment']: '📦', ['0']: '📦',
-    ['pending_shipping']: '📦', ['1']: '📦',
-    ['shipped']: '🚚', ['2']: '🚚',
-    ['completed']: '✅', ['3']: '✅',
-    ['cancelled']: '❌', ['4']: '❌',
-    ['refunding']: '❌', ['5']: '❌',
+    pending_payment: '📦',
+    paid: '📦',
+    shipped: '🚚',
+    confirmed: '✅',
+    completed: '✅',
+    cancelled: '❌',
+    refunding: '❌',
   }
-  return icons[s] || '📦'
+  return icons[order.value.status] || '📦'
 })
 
 const statusSubText = computed(() => {
   if (!order.value) return ''
-  const s = String(order.value.status)
   const texts: Record<string, string> = {
-    ['pending_payment']: '请尽快付款，订单将在30分钟后自动取消',
-    ['0']: '请尽快付款，订单将在30分钟后自动取消',
-    ['pending_shipping']: '已支付，等待卖家发货',
-    ['1']: '已支付，等待卖家发货',
-    ['shipped']: '商品已发出，请注意查收',
-    ['2']: '商品已发出，请注意查收',
-    ['completed']: '交易已完成，期待您的再次光临',
-    ['3']: '交易已完成，期待您的再次光临',
-    ['cancelled']: '订单已取消',
-    ['4']: '订单已取消',
-    ['refunding']: '退款处理中，请耐心等待',
-    ['5']: '退款处理中，请耐心等待',
+    pending_payment: '请尽快付款，订单将在30分钟后自动取消',
+    paid: '已支付，等待卖家发货',
+    shipped: '商品已发出，请注意查收',
+    confirmed: '已确认收货，期待您的评价',
+    completed: '交易已完成，期待您的再次光临',
+    cancelled: '订单已取消',
+    refunding: '退款处理中，请耐心等待',
   }
-  return texts[s] || ''
+  return texts[order.value.status] || ''
 })
 
 // ── Data Loading ──────────────────────────────
@@ -309,15 +304,6 @@ async function handleCancelOrder() {
   }
 }
 
-function handlePayOrder() {
-  showSuccess('模拟支付成功')
-  setTimeout(() => {
-    if (order.value) {
-      loadOrderDetail()
-    }
-  }, 1000)
-}
-
 async function handleConfirmReceive() {
   if (!order.value) return
 
@@ -342,20 +328,32 @@ async function handleConfirmReceive() {
   }
 }
 
-function handleViewLogistics() {
-  uni.showToast({ title: '物流信息查询中', icon: 'none' })
+async function handleRefundOrder() {
+  if (!order.value) return
+
+  const res = await new Promise<boolean>(resolve => {
+    uni.showModal({
+      title: '申请退款',
+      content: '确定要申请退款吗？',
+      success: (modalRes) => resolve(modalRes.confirm),
+    })
+  })
+  if (!res) return
+
+  try {
+    showLoading('提交中...')
+    await requestRefund(order.value.id)
+    hideLoading()
+    showSuccess('退款申请已提交')
+    loadOrderDetail()
+  } catch (err: any) {
+    hideLoading()
+    showError(err.message || '退款申请失败')
+  }
 }
 
 function handleBuyAgain() {
   uni.showToast({ title: '已加入购物车', icon: 'success' })
-}
-
-function handleRemindShip() {
-  uni.showToast({ title: '已提醒卖家发货', icon: 'success' })
-}
-
-function handleRefundOrder() {
-  uni.showToast({ title: '退款申请已提交', icon: 'none' })
 }
 </script>
 
@@ -669,6 +667,66 @@ function handleRefundOrder() {
   border: 1px solid #FF7B7B;
   border-radius: 8px;
   flex-shrink: 0;
+}
+
+/* ===== Timeline Card ===== */
+.timeline-card {
+  background: #ffffff;
+  border-radius: 16px;
+  margin: 0 24rpx 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.timeline-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #4a3728;
+  margin-bottom: 16rpx;
+}
+
+.timeline-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8rpx 0;
+  position: relative;
+}
+
+.timeline-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #FF7B7B;
+  flex-shrink: 0;
+  margin-top: 6rpx;
+  z-index: 1;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 7rpx;
+  top: 28rpx;
+  bottom: -8rpx;
+  width: 2rpx;
+  background: #f0e0d0;
+}
+
+.timeline-content {
+  margin-left: 20rpx;
+  flex: 1;
+}
+
+.timeline-text {
+  font-size: 26rpx;
+  color: #4a3728;
+  line-height: 1.5;
+}
+
+.timeline-time {
+  font-size: 22rpx;
+  color: #b0a090;
+  margin-top: 4rpx;
 }
 
 /* ===== Bottom ===== */

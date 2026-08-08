@@ -57,8 +57,8 @@
           <text class="order-number">{{ order.order_no }}</text>
           <text
             class="order-status"
-            :style="{ color: getStatusInfo(order.status).color, background: getStatusInfo(order.status).bg }"
-          >{{ getStatusInfo(order.status).label }}</text>
+            :style="{ color: orderStatusColor(order.status), background: statusBg(order.status) }"
+          >{{ orderStatusLabel(order.status) }}</text>
         </view>
 
         <!-- Items -->
@@ -86,42 +86,36 @@
 
         <!-- Bottom Action Row -->
         <view class="order-bottom">
-          <text class="order-total">合计：{{ formatPrice(order.total_amount) }}</text>
+          <text class="order-total">合计：{{ formatCents(order.total_amount) }}</text>
           <view class="order-actions">
             <!-- Status: pending_payment -->
-            <template v-if="order.status === 'pending_payment' || order.status === '0' ">
+            <template v-if="order.status === 'pending_payment'">
               <view class="btn-border" hover-class="btn-hover" @tap="handleCancelOrder(order)">
                 <text class="btn-border-text">取消订单</text>
               </view>
-              <view class="btn-solid" hover-class="btn-solid-hover" @tap="handlePayOrder(order)">
-                <text class="btn-solid-text">立即付款</text>
-              </view>
             </template>
-            <!-- Status: pending_shipping -->
-            <template v-else-if="order.status === 'pending_shipping' || order.status === '1' ">
+            <!-- Status: paid -->
+            <template v-else-if="order.status === 'paid'">
               <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder(order)">
                 <text class="btn-border-text">申请退款</text>
               </view>
-              <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleRemindShip(order)">
-                <text class="btn-solid-text">提醒发货</text>
-              </view>
             </template>
             <!-- Status: shipped -->
-            <template v-else-if="order.status === 'shipped' || order.status === '2' ">
-              <view class="btn-border" hover-class="btn-hover" @tap="handleViewLogistics(order)">
-                <text class="btn-border-text">查看物流</text>
+            <template v-else-if="order.status === 'shipped'">
+              <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder(order)">
+                <text class="btn-border-text">申请退款</text>
               </view>
               <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleConfirmReceive(order)">
                 <text class="btn-solid-text">确认收货</text>
               </view>
             </template>
-            <!-- Status: completed -->
-            <template v-else-if="order.status === 'completed' || order.status === '3' ">
+            <!-- Status: confirmed / completed -->
+            <template v-else-if="order.status === 'confirmed' || order.status === 'completed'">
               <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleBuyAgain(order)">
                 <text class="btn-solid-text">再次购买</text>
               </view>
             </template>
-            <!-- Status: cancelled/refunding -->
+            <!-- Status: cancelled / refunding / other -->
             <template v-else>
               <view class="btn-solid btn-solid--muted" hover-class="btn-solid-hover" @tap="handleBuyAgain(order)">
                 <text class="btn-solid-text">再次购买</text>
@@ -144,14 +138,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { ref } from 'vue'
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { getOrderList, cancelOrder, confirmReceipt } from '../../api/orders'
+import { getOrderList, cancelOrder, confirmReceipt, requestRefund } from '../../api/orders'
 import type { Order } from '../../api/orders'
 import { formatPrice, showSuccess, showError, showLoading, hideLoading } from '../../utils/index'
-import { ORDER_STATUS, PAGE_SIZE } from '../../utils/constants'
+import { PAGE_SIZE } from '../../utils/constants'
+import { orderStatusLabel, orderStatusColor, formatCents } from '../../utils/mapping'
 
 // ── Tabs ──────────────────────────────────────
 interface TabItem {
@@ -163,7 +158,7 @@ interface TabItem {
 const tabs: TabItem[] = [
   { label: '全部', value: 'all', statusCode: undefined },
   { label: '待付款', value: 'pending_payment', statusCode: 'pending_payment' },
-  { label: '待发货', value: 'pending_shipping', statusCode: 'pending_shipping' },
+  { label: '待发货', value: 'paid', statusCode: 'paid' },
   { label: '已发货', value: 'shipped', statusCode: 'shipped' },
   { label: '已完成', value: 'completed', statusCode: 'completed' },
 ]
@@ -180,23 +175,17 @@ const hasMore = ref<boolean>(true)
 const total = ref<number>(0)
 
 // ── Status Helpers ────────────────────────────
-function getStatusInfo(status: string | number): { label: string; color: string; bg: string } {
-  const s = String(status)
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    ['pending_payment']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['pending_shipping']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    ['shipped']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    ['completed']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    ['cancelled']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    ['refunding']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['0']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    ['1']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    ['2']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    ['3']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    ['4']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    ['5']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+function statusBg(status: string): string {
+  const map: Record<string, string> = {
+    pending_payment: '#FFF0F0',
+    paid: '#FFF8F0',
+    shipped: '#F0F8FB',
+    confirmed: '#F2FAF5',
+    completed: '#F2FAF5',
+    cancelled: '#F5F5F5',
+    refunding: '#FFF0F0',
   }
-  return map[s] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
+  return map[status] || '#F5F5F5'
 }
 
 function getPlaceholderClass(id: string | number): string {
@@ -262,7 +251,9 @@ function switchTab(tabValue: string) {
 onLoad((options?: AnyObject) => {
   const statusParam = options?.status
   if (statusParam !== undefined && statusParam !== null && statusParam !== '') {
-    activeTab.value = String(statusParam)
+    const raw = String(statusParam)
+    // backward compat: old code used pending_shipping
+    activeTab.value = raw === 'pending_shipping' ? 'paid' : raw
   }
   loadOrders(true)
 })
@@ -311,13 +302,6 @@ async function handleCancelOrder(order: Order) {
   }
 }
 
-function handlePayOrder(order: Order) {
-  showSuccess('模拟支付成功')
-  setTimeout(() => {
-    goToDetail(order.id)
-  }, 1000)
-}
-
 async function handleConfirmReceive(order: Order) {
   const res = await new Promise<boolean>(resolve => {
     uni.showModal({
@@ -340,20 +324,30 @@ async function handleConfirmReceive(order: Order) {
   }
 }
 
-function handleViewLogistics(order: Order) {
-  uni.showToast({ title: '物流信息查询中', icon: 'none' })
+async function handleRefundOrder(order: Order) {
+  const res = await new Promise<boolean>(resolve => {
+    uni.showModal({
+      title: '申请退款',
+      content: '确定要申请退款吗？',
+      success: (modalRes) => resolve(modalRes.confirm),
+    })
+  })
+  if (!res) return
+
+  try {
+    showLoading('提交中...')
+    await requestRefund(order.id)
+    hideLoading()
+    showSuccess('退款申请已提交')
+    loadOrders(true)
+  } catch (err: any) {
+    hideLoading()
+    showError(err.message || '退款申请失败')
+  }
 }
 
-function handleBuyAgain(order: Order) {
+function handleBuyAgain(_order: Order) {
   uni.showToast({ title: '已加入购物车', icon: 'success' })
-}
-
-function handleRemindShip(order: Order) {
-  uni.showToast({ title: '已提醒卖家发货', icon: 'success' })
-}
-
-function handleRefundOrder(order: Order) {
-  uni.showToast({ title: '退款申请已提交', icon: 'none' })
 }
 </script>
 
