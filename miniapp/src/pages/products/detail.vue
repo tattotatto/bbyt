@@ -178,9 +178,9 @@
       <!-- Fixed Bottom Bar -->
       <view class="bottom-bar">
         <view class="bottom-left">
-          <view class="icon-btn" @tap="handleFavorite">
+          <view :class="['icon-btn', { 'icon-btn--disabled': favoriteLoading }]" @tap="handleFavorite">
             <text class="icon-btn-emoji">{{ isFavorited ? '❤️' : '🤍' }}</text>
-            <text class="icon-btn-label">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+            <text class="icon-btn-label">{{ favoriteLoading ? '...' : (isFavorited ? '已收藏' : '收藏') }}</text>
           </view>
           <view class="icon-btn" @tap="goToCart">
             <text class="icon-btn-emoji">&#x1F6D2;</text>
@@ -212,7 +212,7 @@ import PriceTable from '../../components/PriceTable.vue'
 import { getProductDetail } from '../../api/products'
 import type { ProductDetail } from '../../api/products'
 import { addHistory } from '../../api/history'
-import { getFavorites, addFavorite, removeFavorite } from '../../api/favorites'
+import { checkFavorited, addFavorite, removeFavorite } from '../../api/favorites'
 import { useUserStore } from '../../stores/user'
 import { useCartStore } from '../../stores/cart'
 import { formatPrice, showSuccess, showError } from '../../utils/index'
@@ -228,7 +228,9 @@ const product = ref<ProductDetail | null>(null)
 const quantity = ref(1)
 const selectedSpecs = ref<Record<number, string>>({})
 const isFavorited = ref(false)
+const favoriteLoading = ref(true)
 const productId = ref('')
+let historyRecorded = false
 
 // ── Spec entries (Record<string, string[]> as entries) ─
 const specEntries = computed<[string, string[]][]>(() => {
@@ -269,11 +271,14 @@ async function loadProduct(id: string) {
       }
     }
 
-    // Record history (fire-and-forget)
-    addHistory(id).catch(() => { /* non-critical */ })
+    // Record history (only once, not on retry)
+    if (!historyRecorded) {
+      historyRecorded = true
+      addHistory(id).catch(() => { /* non-critical */ })
+    }
 
-    // Check favorite status (fire-and-forget)
-    checkFavoriteStatus()
+    // Await favorite status check so UI is correct before enabling button
+    await checkFavoriteStatus()
   } catch (err: unknown) {
     const e = err as { message?: string; msg?: string }
     errorMsg.value = e.message || e.msg || '加载失败'
@@ -285,11 +290,12 @@ async function loadProduct(id: string) {
 // ── Favorite ───────────────────────────────────────────
 async function checkFavoriteStatus() {
   try {
-    const res = await getFavorites({ page: 1, page_size: 200 })
-    const items = res.data?.items ?? []
-    isFavorited.value = items.some((f) => f.product_id === productId.value)
+    const res = await checkFavorited(productId.value)
+    isFavorited.value = res.data?.is_favorited ?? false
   } catch {
     // Silently ignore favorite check failure
+  } finally {
+    favoriteLoading.value = false
   }
 }
 
@@ -713,6 +719,11 @@ onLoad((options?: Record<string, string>) => {
   align-items: center;
   padding: 0 20rpx;
   position: relative;
+}
+
+.icon-btn--disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .icon-btn-emoji {

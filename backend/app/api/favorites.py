@@ -149,3 +149,22 @@ async def remove_favorite(
     await db.delete(item)
     await db.flush()
     return APIResponse.ok(message="已取消收藏")
+
+
+@router.get("/{product_id}", response_model=APIResponse[dict], summary="检查是否已收藏")
+async def check_favorite(
+    product_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """检查当前用户是否已收藏某个商品，返回 {"is_favorited": bool}"""
+    user_id = current_user["user_id"]
+
+    result = await db.execute(
+        select(Favorite).where(
+            Favorite.user_id == user_id,
+            Favorite.product_id == product_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+    return APIResponse.ok(data={"is_favorited": existing is not None})

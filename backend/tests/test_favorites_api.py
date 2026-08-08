@@ -63,3 +63,24 @@ async def test_favorite_unfavorite(client, db_session):
 @pytest.mark.asyncio
 async def test_favorite_requires_auth(client, db_session):
     assert (await client.get("/api/v1/favorites")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_check_favorite_single(client, db_session):
+    """GET /{product_id} 返回 is_favorited 布尔值"""
+    u, token = await _mk_retailer(db_session, "13900000054")
+    p = await _mk_product(db_session)
+    h = {"Authorization": f"Bearer {token}"}
+
+    # 未收藏 → is_favorited=False
+    res = await client.get(f"/api/v1/favorites/{p.id}", headers=h)
+    assert res.status_code == 200
+    assert res.json()["data"]["is_favorited"] is False
+
+    # 添加收藏
+    await client.post("/api/v1/favorites", json={"product_id": str(p.id)}, headers=h)
+
+    # 已收藏 → is_favorited=True
+    res = await client.get(f"/api/v1/favorites/{p.id}", headers=h)
+    assert res.status_code == 200
+    assert res.json()["data"]["is_favorited"] is True

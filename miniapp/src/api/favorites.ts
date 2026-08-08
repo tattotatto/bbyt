@@ -10,5 +10,7 @@ export interface FavoriteItemOut {
 // ── API functions ─────────────────────────────────────────────────────────────
 export const getFavorites = (params?: { page?: number; page_size?: number }) =>
   http.get<Paginated<FavoriteItemOut>>('/favorites', params)
+export const checkFavorited = (product_id: string) =>
+  http.get<{ is_favorited: boolean }>(`/favorites/${product_id}`)
 export const addFavorite = (product_id: string) => http.post('/favorites', { product_id })
 export const removeFavorite = (product_id: string) => http.delete(`/favorites/${product_id}`)
