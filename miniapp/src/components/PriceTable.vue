@@ -7,72 +7,100 @@
       <text class="price-table__cell price-table__cell--header price-table__cell--right">总价</text>
     </view>
 
-    <!-- Data rows -->
+    <!-- Data rows for current user level -->
     <view
-      v-for="(rule, index) in pricingRules"
+      v-for="(tier, index) in currentLevelTiers"
       :key="index"
-      :class="['price-table__row', { 'price-table__row--active': isActiveRow(rule) }]"
+      :class="['price-table__row', { 'price-table__row--active': isActiveTier(tier, index) }]"
     >
       <text
-        :class="['price-table__cell', { 'price-table__cell--active': isActiveRow(rule) }]"
+        :class="['price-table__cell', { 'price-table__cell--active': isActiveTier(tier, index) }]"
       >
-        {{ rule.min_qty }}-{{ rule.max_qty }}
+        {{ formatQtyRange(tier, index) }}
       </text>
       <text
-        :class="['price-table__cell', { 'price-table__cell--active': isActiveRow(rule) }]"
+        :class="['price-table__cell', { 'price-table__cell--active': isActiveTier(tier, index) }]"
       >
-        ¥{{ formatPrice(rule.unit_price) }}
+        &yen;{{ formatMoney(tier.price) }}
       </text>
       <text
         :class="[
           'price-table__cell',
           'price-table__cell--right',
-          { 'price-table__cell--active': isActiveRow(rule) }
+          { 'price-table__cell--active': isActiveTier(tier, index) }
         ]"
       >
-        ¥{{ formatPrice(rule.unit_price * qty) }}
+        &yen;{{ formatMoney(tier.price * qty) }}
       </text>
     </view>
 
-    <!-- User level discount note -->
-    <view v-if="userLevel > 0" class="price-table__discount">
-      <text class="price-table__discount-text">
-        您的等级享受{{ discountLabel }}优惠
+    <!-- Level badge -->
+    <view v-if="userLevel" class="price-table__level-badge">
+      <text class="price-table__level-text">
+        {{ levelLabel }}专享价格
       </text>
+    </view>
+
+    <!-- Fallback: no tiers for current level -->
+    <view v-if="currentLevelTiers.length === 0" class="price-table__empty">
+      <text class="price-table__empty-text">暂无价格信息</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-
-interface PricingRule {
-  min_qty: number
-  max_qty: number
-  unit_price: number
-}
+import type { PricingTier } from '../api/types'
 
 interface Props {
-  pricingRules: PricingRule[]
-  userLevel?: number
+  pricingRules: Record<string, PricingTier[]>
+  userLevel: string
   qty?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  userLevel: 0,
-  qty: 1
+  qty: 1,
 })
 
-const discountLabel = computed(() => {
-  const discount = Math.max(0, 10 - props.userLevel * 0.5)
-  return discount.toFixed(1) + '折'
-})
-
-function isActiveRow(rule: PricingRule): boolean {
-  return props.qty >= rule.min_qty && props.qty <= rule.max_qty
+const LEVEL_LABELS: Record<string, string> = {
+  normal: '普通会员',
+  silver: '银卡会员',
+  gold: '金卡会员',
+  platinum: '钻石会员',
 }
 
-function formatPrice(price: number): string {
+const levelLabel = computed(() => {
+  return LEVEL_LABELS[props.userLevel] ?? props.userLevel
+})
+
+/** Tiers for the current user's level, sorted by qty ascending */
+const currentLevelTiers = computed(() => {
+  const tiers = props.pricingRules[props.userLevel] ?? []
+  return [...tiers].sort((a, b) => a.qty - b.qty)
+})
+
+/** Format qty range: "10-49" or "100+" or "10" (single tier) */
+function formatQtyRange(tier: PricingTier, index: number): string {
+  const nextTier = currentLevelTiers.value[index + 1]
+  if (nextTier) {
+    const maxQty = nextTier.qty - 1
+    if (maxQty === tier.qty) {
+      return `${tier.qty}`
+    }
+    return `${tier.qty}-${maxQty}`
+  }
+  return `${tier.qty}+`
+}
+
+/** Check if user's current qty falls in this tier's range */
+function isActiveTier(tier: PricingTier, index: number): boolean {
+  if (props.qty < tier.qty) return false
+  const nextTier = currentLevelTiers.value[index + 1]
+  if (nextTier && props.qty >= nextTier.qty) return false
+  return true
+}
+
+function formatMoney(price: number): string {
   return price.toFixed(2)
 }
 </script>
@@ -128,13 +156,26 @@ function formatPrice(price: number): string {
   color: #FF7B7B;
 }
 
-.price-table__discount {
+.price-table__level-badge {
   padding: 10px 16px;
   background: #FFF8F0;
 }
 
-.price-table__discount-text {
+.price-table__level-text {
   font-size: 22rpx;
-  color: #7a6a5a;
+  color: #FF7B7B;
+  font-weight: 500;
+}
+
+.price-table__empty {
+  padding: 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.price-table__empty-text {
+  font-size: 24rpx;
+  color: #b0a090;
 }
 </style>

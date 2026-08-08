@@ -17,7 +17,7 @@
     <!-- Empty state: product not found -->
     <EmptyState
       v-else-if="!product"
-      icon="📦"
+      icon="&#x1F4E6;"
       title="商品不存在"
       description="该商品可能已下架或链接无效"
       :showButton="true"
@@ -35,7 +35,7 @@
         indicator-active-color="#FF7B7B"
         circular
       >
-        <swiper-item v-for="(img, idx) in allImages" :key="idx">
+        <swiper-item v-for="(img, idx) in product.images" :key="idx">
           <image
             :src="img"
             mode="aspectFill"
@@ -44,7 +44,7 @@
           />
         </swiper-item>
         <!-- Fallback gradient slide when no images -->
-        <swiper-item v-if="allImages.length === 0">
+        <swiper-item v-if="product.images.length === 0">
           <view class="swiper-fallback">
             <text class="swiper-fallback-text">暂无图片</text>
           </view>
@@ -57,28 +57,39 @@
 
         <view class="price-row">
           <text class="price-text">
-            {{ formatPrice((product as any).price_min ?? 0) }}
-            <text v-if="(product as any).price_min !== (product as any).price_max"> - {{ formatPrice((product as any).price_max ?? 0) }}</text>
+            <template v-if="priceRange.min !== null">
+              <template v-if="priceRange.min === priceRange.max">
+                {{ formatPrice(priceRange.min!) }}
+              </template>
+              <template v-else>
+                {{ formatPrice(priceRange.min!) }} - {{ formatPrice(priceRange.max!) }}
+              </template>
+            </template>
+            <template v-else>
+              <text class="price-text--na">暂无报价</text>
+            </template>
           </text>
+        </view>
+
+        <view v-if="product.category" class="category-row">
+          <text class="category-text">{{ product.category.name }}</text>
         </view>
 
         <view class="tags-row">
           <AgeTag :range="product.age_range ?? ''" size="medium" />
           <CertBadge
-            v-for="cert in (product.safety_certifications as any[])"
-            :key="cert"
-            :name="cert as string"
+            v-for="(cert, ci) in product.safety_certifications"
+            :key="ci"
+            :name="cert.name"
           />
         </view>
 
         <view class="meta-row">
-          <text class="meta-text">已售{{ (product as any).sales_count ?? 0 }}件</text>
-          <text class="meta-divider">·</text>
+          <text class="meta-text">已售{{ product.sales_count }}件</text>
+          <text class="meta-divider">&#xB7;</text>
           <text class="meta-text">库存{{ product.stock ?? 0 }}件</text>
-          <text class="meta-divider">·</text>
-          <text class="meta-text">{{ (product as any).moq ?? 1 }}件起批</text>
-          <text class="meta-divider">·</text>
-          <text class="meta-text">{{ (product as any).unit ?? '' }}</text>
+          <text class="meta-divider">&#xB7;</text>
+          <text class="meta-text">{{ product.min_order_qty }}件起批</text>
         </view>
       </view>
 
@@ -86,19 +97,19 @@
       <view class="section-divider" />
 
       <!-- Specs (if any) -->
-      <view v-if="(product.specs as any) && ((product.specs as any).length > 0 || Object.keys(product.specs!).length > 0)" class="spec-section">
+      <view v-if="specEntries.length > 0" class="spec-section">
         <text class="section-title">规格选择</text>
         <view class="spec-grid">
           <view
-            v-for="(spec, si) in ((product.specs as any) as Array<{name: string; options: string[]}>)"
-            :key="si"
+            v-for="(entry, si) in specEntries"
+            :key="entry[0]"
             class="spec-group"
           >
-            <text class="spec-name">{{ spec.name }}</text>
+            <text class="spec-name">{{ entry[0] }}</text>
             <view class="spec-options">
               <view
-                v-for="(opt, oi) in spec.options"
-                :key="oi"
+                v-for="opt in entry[1]"
+                :key="opt"
                 :class="['spec-pill', { active: selectedSpecs[si] === opt }]"
                 @tap="selectSpec(si, opt)"
               >
@@ -110,14 +121,14 @@
       </view>
 
       <!-- Divider -->
-      <view v-if="(product.specs as any) && ((product.specs as any).length > 0 || Object.keys(product.specs!).length > 0)" class="section-divider" />
+      <view v-if="specEntries.length > 0" class="section-divider" />
 
       <!-- Price Table -->
-      <view v-if="((product as any).price_tiers && (product as any).price_tiers.length > 0) || Object.keys(product.pricing_rules || {}).length > 0" class="section">
+      <view v-if="Object.keys(product.pricing_rules).length > 0" class="section">
         <text class="section-title">批发价格表</text>
         <PriceTable
-          :pricingRules="(product as any).price_tiers || product.pricing_rules"
-          :userLevel="userStore.userLevel"
+          :pricingRules="product.pricing_rules"
+          :userLevel="userStore.userInfo?.level ?? 'normal'"
           :qty="quantity"
         />
       </view>
@@ -130,10 +141,10 @@
         <text class="section-title">购买数量</text>
         <view class="stepper">
           <view
-            :class="['stepper-btn', { disabled: quantity <= ((product as any).moq || 1) }]"
+            :class="['stepper-btn', { disabled: quantity <= product.min_order_qty }]"
             @tap="decreaseQty"
           >
-            <text class="stepper-btn-text">−</text>
+            <text class="stepper-btn-text">&minus;</text>
           </view>
           <input
             class="stepper-input"
@@ -148,7 +159,7 @@
           </view>
         </view>
         <text class="stepper-hint">
-          起订{{ (product as any).moq ?? 1 }}{{ (product as any).unit ?? '' }} · 库存{{ product.stock ?? 0 }}{{ (product as any).unit ?? '' }}
+          起订{{ product.min_order_qty }}件 &#xB7; 库存{{ product.stock ?? 0 }}件
         </text>
       </view>
 
@@ -156,17 +167,9 @@
       <view class="section-divider" />
 
       <!-- Description -->
-      <view class="section">
+      <view v-if="product.description" class="section">
         <text class="section-title">商品详情</text>
         <text class="desc-text">{{ product.description }}</text>
-        <image
-          v-for="(img, i) in ((product as any).detail_images || [])"
-          :key="'desc-' + i"
-          :src="img"
-          mode="widthFix"
-          lazy-load
-          class="desc-img"
-        />
       </view>
 
       <!-- Bottom spacer for fixed bar -->
@@ -176,11 +179,11 @@
       <view class="bottom-bar">
         <view class="bottom-left">
           <view class="icon-btn" @tap="handleFavorite">
-            <text class="icon-btn-emoji">🤍</text>
-            <text class="icon-btn-label">收藏</text>
+            <text class="icon-btn-emoji">{{ isFavorited ? '❤️' : '🤍' }}</text>
+            <text class="icon-btn-label">{{ isFavorited ? '已收藏' : '收藏' }}</text>
           </view>
           <view class="icon-btn" @tap="goToCart">
-            <text class="icon-btn-emoji">🛒</text>
+            <text class="icon-btn-emoji">&#x1F6D2;</text>
             <text class="icon-btn-label">购物车</text>
             <text v-if="cartStore.totalCount > 0" class="cart-badge">{{ cartStore.totalCount }}</text>
           </view>
@@ -208,9 +211,12 @@ import CertBadge from '../../components/CertBadge.vue'
 import PriceTable from '../../components/PriceTable.vue'
 import { getProductDetail } from '../../api/products'
 import type { ProductDetail } from '../../api/products'
+import { addHistory } from '../../api/history'
+import { getFavorites, addFavorite, removeFavorite } from '../../api/favorites'
 import { useUserStore } from '../../stores/user'
 import { useCartStore } from '../../stores/cart'
 import { formatPrice, showSuccess, showError } from '../../utils/index'
+import { parsePriceRange } from '../../utils/mapping'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -221,43 +227,87 @@ const errorMsg = ref('')
 const product = ref<ProductDetail | null>(null)
 const quantity = ref(1)
 const selectedSpecs = ref<Record<number, string>>({})
+const isFavorited = ref(false)
+const productId = ref('')
 
-// ── All images for swiper ──────────────────────────────
-const allImages = computed(() => {
-  if (!product.value) return []
-  return [
-    ...(product.value.images || []),
-    ...((product.value as any).detail_images || [])
-  ]
+// ── Spec entries (Record<string, string[]> as entries) ─
+const specEntries = computed<[string, string[]][]>(() => {
+  if (!product.value?.specs) return []
+  return Object.entries(product.value.specs)
+})
+
+// ── Price range from pricing_rules ─────────────────────
+const priceRange = computed(() => {
+  if (!product.value) return { min: null as number | null, max: null as number | null }
+  return parsePriceRange(product.value.pricing_rules)
 })
 
 // ── Load product detail ────────────────────────────────
-async function loadProduct(id: string | number) {
+async function loadProduct(id: string) {
   loading.value = true
   errorMsg.value = ''
 
   try {
-    const res = await getProductDetail(String(id))
+    const res = await getProductDetail(id)
     product.value = res.data
 
-    // Set default quantity to MOQ
-    quantity.value = (res.data as any).moq || 1
+    // Set default quantity to min_order_qty
+    quantity.value = res.data.min_order_qty || 1
 
     // Initialize spec selections to first option of each spec
-    const specsArr = (res.data.specs as any) as Array<{ name: string; options: string[] }> | null
-    if (specsArr && specsArr.length > 0) {
-      const initial: Record<number, string> = {}
-      specsArr.forEach((spec, idx) => {
-        if (spec.options && spec.options.length > 0) {
-          initial[idx] = spec.options[0]
-        }
-      })
-      selectedSpecs.value = initial
+    const specs = res.data.specs
+    if (specs) {
+      const entries = Object.entries(specs)
+      if (entries.length > 0) {
+        const initial: Record<number, string> = {}
+        entries.forEach(([, options], idx) => {
+          if (options.length > 0) {
+            initial[idx] = options[0]
+          }
+        })
+        selectedSpecs.value = initial
+      }
     }
-  } catch (err: any) {
-    errorMsg.value = err.message || err.msg || '加载失败'
+
+    // Record history (fire-and-forget)
+    addHistory(id).catch(() => { /* non-critical */ })
+
+    // Check favorite status (fire-and-forget)
+    checkFavoriteStatus()
+  } catch (err: unknown) {
+    const e = err as { message?: string; msg?: string }
+    errorMsg.value = e.message || e.msg || '加载失败'
   } finally {
     loading.value = false
+  }
+}
+
+// ── Favorite ───────────────────────────────────────────
+async function checkFavoriteStatus() {
+  try {
+    const res = await getFavorites({ page: 1, page_size: 200 })
+    const items = res.data?.items ?? []
+    isFavorited.value = items.some((f) => f.product_id === productId.value)
+  } catch {
+    // Silently ignore favorite check failure
+  }
+}
+
+async function handleFavorite() {
+  if (!productId.value) return
+  try {
+    if (isFavorited.value) {
+      await removeFavorite(productId.value)
+      isFavorited.value = false
+      showSuccess('已取消收藏')
+    } else {
+      await addFavorite(productId.value)
+      isFavorited.value = true
+      showSuccess('已收藏')
+    }
+  } catch (err: unknown) {
+    const e = err as { message?: string; msg?: string }
+    showError(e.message || e.msg || '操作失败')
   }
 }
 
@@ -268,26 +318,26 @@ function selectSpec(specIdx: number, option: string) {
 
 // ── Get formatted selected spec string ─────────────────
 function getSelectedSpec(): string {
-  const specsArr = (product.value?.specs as any) as Array<{ name: string; options: string[] }> | null | undefined
-  if (!specsArr || specsArr.length === 0) {
-    return '默认'
-  }
-  return specsArr
-    .map((_s, i) => selectedSpecs.value[i] || '')
+  const specs = product.value?.specs
+  if (!specs) return '默认'
+  const entries = Object.entries(specs)
+  if (entries.length === 0) return '默认'
+  return entries
+    .map(([, _options], i) => selectedSpecs.value[i] || '')
     .filter(Boolean)
     .join(' / ') || '默认'
 }
 
 // ── Quantity stepper ───────────────────────────────────
 function decreaseQty() {
-  const moq = (product.value as any)?.moq || 1
+  const moq = product.value?.min_order_qty ?? 1
   if (quantity.value > moq) {
     quantity.value--
   }
 }
 
 function increaseQty() {
-  const maxStock = product.value?.stock || 9999
+  const maxStock = product.value?.stock ?? 9999
   if (quantity.value < maxStock) {
     quantity.value++
   }
@@ -298,14 +348,14 @@ function addToCart() {
   if (!product.value) return
 
   cartStore.addItem({
-    productId: product.value.id as any,
+    productId: product.value.id,
     productName: product.value.name,
     productImage: product.value.images?.[0] || '',
     spec: getSelectedSpec(),
-    unitPrice: (product.value as any).price_min ?? 0,
+    unitPrice: priceRange.value.min ?? 0,
     quantity: quantity.value,
     stock: product.value.stock ?? 0,
-    minOrderQty: (product.value as any).moq ?? product.value.min_order_qty
+    minOrderQty: product.value.min_order_qty,
   })
 
   showSuccess('已加入购物车')
@@ -321,25 +371,22 @@ function goToCart() {
   uni.switchTab({ url: '/pages/cart/index' })
 }
 
-function handleFavorite() {
-  showSuccess('已收藏')
-}
-
 function goBack() {
   uni.navigateBack()
 }
 
 function retry() {
-  if (product.value) {
-    loadProduct(product.value.id)
+  if (productId.value) {
+    loadProduct(productId.value)
   }
 }
 
 // ── Lifecycle ──────────────────────────────────────────
-onLoad((options: any) => {
+onLoad((options?: Record<string, string>) => {
   const id = options?.id
   if (id) {
-    loadProduct(String(id))
+    productId.value = String(id)
+    loadProduct(id)
   } else {
     errorMsg.value = '商品ID无效'
   }
@@ -400,6 +447,25 @@ onLoad((options: any) => {
   font-size: 40rpx;
   font-weight: 700;
   color: #FF7B7B;
+}
+
+.price-text--na {
+  font-size: 32rpx;
+  font-weight: 400;
+  color: #b0a090;
+}
+
+.category-row {
+  margin-top: 8rpx;
+}
+
+.category-text {
+  font-size: 24rpx;
+  color: #FF7B7B;
+  background: #FFF0F0;
+  padding: 4rpx 16rpx;
+  border-radius: 8px;
+  display: inline-block;
 }
 
 .tags-row {
@@ -564,14 +630,6 @@ onLoad((options: any) => {
   color: #7a6a5a;
   line-height: 1.8;
   display: block;
-  margin-bottom: 24rpx;
-}
-
-.desc-img {
-  width: 100%;
-  display: block;
-  margin-bottom: 16rpx;
-  border-radius: 12px;
 }
 
 /* ── Error state ─────────────────────────────────────── */

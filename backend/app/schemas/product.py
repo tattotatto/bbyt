@@ -100,6 +100,7 @@ class ProductOut(BaseModel):
     min_order_qty: int
     pricing_rules: dict
     status: str
+    sales_count: int = 0
     category: CategoryOut | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

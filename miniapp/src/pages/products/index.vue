@@ -111,9 +111,9 @@ const categoryList = ref<{ id: string | number; name: string; icon: string }[]>(
 const ageFilterIndex = ref(0) // 0=全部, 1=0-3岁, 2=3-6岁, 3=6-12岁
 const ageRanges = ['', '0-3岁', '3-6岁', '6-12岁']
 
-const sortIndex = ref(0) // 0=default, 1=price_asc, 2=price_desc
-const sortOptions = ['default', 'price_asc', 'price_desc']
-const sortLabels = ['综合', '价格升序', '价格降序']
+const sortIndex = ref(0) // 0=综合(default), 1=newest, 2=sales_desc, 3=price_asc, 4=price_desc
+const sortValues = ['', 'newest', 'sales_desc', 'price_asc', 'price_desc']
+const sortLabels = ['综合', '最新', '销量优先', '价格升序', '价格降序']
 
 const onlyInStock = ref(false)
 
@@ -156,12 +156,21 @@ async function loadProducts(isRefresh = false) {
   errorMsg.value = ''
 
   try {
-    const params: any = {
+    const sortValue = sortValues[sortIndex.value]
+    interface LoadParams {
+      page: number
+      page_size: number
+      category_id?: string
+      keyword?: string
+      age_range?: string
+      sort?: 'newest' | 'sales_desc' | 'price_asc' | 'price_desc'
+    }
+    const params: LoadParams = {
       page: page.value,
-      page_size: 20
+      page_size: 20,
     }
     if (activeCategoryId.value > 0) {
-      params.category_id = activeCategoryId.value
+      params.category_id = String(activeCategoryId.value)
     }
     if (keyword.value.trim()) {
       params.keyword = keyword.value.trim()
@@ -169,8 +178,8 @@ async function loadProducts(isRefresh = false) {
     if (ageFilterIndex.value > 0) {
       params.age_range = ageRanges[ageFilterIndex.value]
     }
-    if (sortIndex.value > 0) {
-      params.sort = sortOptions[sortIndex.value]
+    if (sortValue) {
+      params.sort = sortValue as LoadParams['sort']
     }
 
     const res = await getProductList(params)
@@ -203,7 +212,7 @@ function cycleAgeFilter() {
 }
 
 function cycleSortFilter() {
-  sortIndex.value = (sortIndex.value + 1) % 3
+  sortIndex.value = (sortIndex.value + 1) % 5
 }
 
 function toggleStockFilter() {

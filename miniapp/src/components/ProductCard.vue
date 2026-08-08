@@ -37,9 +37,9 @@
           </text>
 
           <CertBadge
-            v-for="cert in firstTwoCerts"
-            :key="cert"
-            :name="cert"
+            v-for="(cert, ci) in firstTwoCerts"
+            :key="ci"
+            :name="cert.name"
           />
         </view>
       </view>
@@ -51,16 +51,17 @@
 import { computed } from 'vue'
 import AgeTag from './AgeTag.vue'
 import CertBadge from './CertBadge.vue'
+import type { SafetyCertification } from '../api/products'
 
 interface Product {
-  id: string | number
+  id: string
   name: string
   images: string[]
   age_range: string | null
   price_min: number | null
   price_max: number | null
   stock: number | null
-  safety_certifications: unknown[]
+  safety_certifications: SafetyCertification[]
 }
 
 interface Props {
@@ -73,11 +74,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  click: [id: string | number]
+  click: [id: string]
 }>()
 
 const firstTwoCerts = computed(() => {
-  return ((props.product.safety_certifications || []) as string[]).slice(0, 2)
+  return (props.product.safety_certifications || []).slice(0, 2)
 })
 
 function formatPrice(price: number | null): string {

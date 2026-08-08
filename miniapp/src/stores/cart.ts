@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 interface CartItem {
-  productId: number
+  productId: string
   productName: string
   productImage: string
   spec: string          // Selected spec, e.g. "红色 / L码"
@@ -65,7 +65,7 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   // Remove item from cart
-  function removeItem(productId: number, spec: string) {
+  function removeItem(productId: string, spec: string) {
     const index = items.value.findIndex(i => i.productId === productId && i.spec === spec)
     if (index > -1) {
       items.value.splice(index, 1)
@@ -74,7 +74,7 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   // Update item quantity
-  function updateQuantity(productId: number, spec: string, quantity: number) {
+  function updateQuantity(productId: string, spec: string, quantity: number) {
     const item = items.value.find(i => i.productId === productId && i.spec === spec)
     if (item) {
       if (quantity < item.minOrderQty) {
@@ -92,7 +92,7 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   // Toggle item checked
-  function toggleChecked(productId: number, spec: string) {
+  function toggleChecked(productId: string, spec: string) {
     const item = items.value.find(i => i.productId === productId && i.spec === spec)
     if (item) {
       item.checked = !item.checked

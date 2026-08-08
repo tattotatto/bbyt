@@ -217,6 +217,30 @@ async def test_query_price_below_min(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_product_detail_includes_sales_count(client: AsyncClient):
+    """产品详情应包含 sales_count 字段"""
+    from app.models.product import Product, ProductStatus
+    from app.database import async_session_factory
+
+    async with async_session_factory() as session:
+        p = Product(
+            name="泳圈",
+            pricing_rules={"normal": [{"qty": 10, "price": 35.0}]},
+            status=ProductStatus.ON_SALE,
+            min_order_qty=10,
+            stock=100,
+            sales_count=88,
+        )
+        session.add(p)
+        await session.commit()
+        pid = p.id
+
+    res = await client.get(f"/api/v1/products/{pid}")
+    assert res.status_code == 200
+    assert res.json()["data"]["sales_count"] == 88
+
+
+@pytest.mark.asyncio
 async def test_update_product_status(client: AsyncClient):
     token = await login_admin(client)
     headers = {"Authorization": f"Bearer {token}"}

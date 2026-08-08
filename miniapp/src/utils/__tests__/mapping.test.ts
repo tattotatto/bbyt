@@ -46,4 +46,20 @@ describe('parsePriceRange', () => {
   it('returns nulls on empty rules', () => {
     expect(parsePriceRange({})).toEqual({ min: null, max: null })
   })
+  it('handles single level with single tier (min === max)', () => {
+    const rules = {
+      normal: [{ qty: 10, price: 32.0 }],
+    }
+    expect(parsePriceRange(rules)).toEqual({ min: 32, max: 32 })
+  })
+  it('handles single level with multiple tiers', () => {
+    const rules = {
+      gold: [
+        { qty: 10, price: 25.0 },
+        { qty: 50, price: 20.0 },
+        { qty: 100, price: 16.0 },
+      ],
+    }
+    expect(parsePriceRange(rules)).toEqual({ min: 16, max: 25 })
+  })
 })
