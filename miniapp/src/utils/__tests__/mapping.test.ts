@@ -76,4 +76,7 @@ describe('buildOrderItems', () => {
     const out = buildOrderItems([{ productId: 'p1', productName: '泳圈', productImage: '', quantity: 2, unitPrice: 30 }])
     expect(out[0].name).toBe('泳圈')
   })
+  it('returns empty array for empty input', () => {
+    expect(buildOrderItems([])).toEqual([])
+  })
 })

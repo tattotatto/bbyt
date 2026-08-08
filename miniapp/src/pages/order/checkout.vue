@@ -147,6 +147,7 @@ import {
   hideLoading,
   maskPhone,
 } from '../../utils/index'
+import type { CartCheckoutItem } from '../../utils/index'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -159,7 +160,7 @@ const submitting = ref(false)
 const loading = ref(true)
 
 // Items from cart or passed from product detail page
-const checkoutItems = ref<any[]>([])
+const checkoutItems = ref<CartCheckoutItem[]>([])
 
 // ── Computed: Price ──────────────────────────────
 const subtotal = computed(() =>
