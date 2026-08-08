@@ -10,7 +10,7 @@
 
       <view class="product-card__price-row">
         <text class="product-card__price">
-          <template v-if="product.price_min === product.price_max">
+          <template v-if="(product.price_min ?? 0) === (product.price_max ?? 0)">
             ¥{{ formatPrice(product.price_min) }}
           </template>
           <template v-else>
@@ -20,17 +20,17 @@
       </view>
 
       <view class="product-card__bottom">
-        <AgeTag :range="product.age_range" size="small" />
+        <AgeTag :range="product.age_range ?? ''" size="small" />
 
         <view class="product-card__badges">
           <text
-            v-if="product.stock > 0 && product.stock < 50"
+            v-if="(product.stock ?? 0) > 0 && (product.stock ?? 0) < 50"
             class="product-card__stock product-card__stock--low"
           >
             仅剩{{ product.stock }}件
           </text>
           <text
-            v-else-if="product.stock >= 50"
+            v-else-if="(product.stock ?? 0) >= 50"
             class="product-card__stock product-card__stock--good"
           >
             库存充足
@@ -56,11 +56,11 @@ interface Product {
   id: string | number
   name: string
   images: string[]
-  age_range: string
-  price_min: number
-  price_max: number
-  stock: number
-  safety_certifications: string[]
+  age_range: string | null
+  price_min: number | null
+  price_max: number | null
+  stock: number | null
+  safety_certifications: unknown[]
 }
 
 interface Props {
@@ -77,11 +77,11 @@ const emit = defineEmits<{
 }>()
 
 const firstTwoCerts = computed(() => {
-  return (props.product.safety_certifications || []).slice(0, 2)
+  return ((props.product.safety_certifications || []) as string[]).slice(0, 2)
 })
 
-function formatPrice(price: number): string {
-  return price.toFixed(2)
+function formatPrice(price: number | null): string {
+  return (price ?? 0).toFixed(2)
 }
 
 function handleClick() {

@@ -94,13 +94,13 @@
           <text class="price-label">运费</text>
           <text class="price-value">免运费</text>
         </view>
-        <view v-if="order.discount_amount > 0" class="price-row">
+        <view v-if="order.discount_amount && order.discount_amount > 0" class="price-row">
           <text class="price-label">会员折扣</text>
-          <text class="price-value price-value--discount">-{{ formatPrice(order.discount_amount) }}</text>
+          <text class="price-value price-value--discount">-{{ formatPrice(order.discount_amount ?? 0) }}</text>
         </view>
         <view class="price-row price-row--total">
           <text class="price-label price-label--total">实付款</text>
-          <text class="price-value price-value--total">{{ formatPrice(order.final_amount) }}</text>
+          <text class="price-value price-value--total">{{ formatPrice(order.final_amount ?? order.total_amount) }}</text>
         </view>
       </view>
 
@@ -115,7 +115,7 @@
         </view>
         <view class="info-row">
           <text class="info-label">下单时间</text>
-          <text class="info-value">{{ formatDate(order.created_at) }}</text>
+          <text class="info-value">{{ order.created_at ? formatDate(order.created_at) : '' }}</text>
         </view>
         <view class="info-row">
           <text class="info-label">支付时间</text>
@@ -123,13 +123,13 @@
             {{ order.paid_at ? formatDate(order.paid_at) : '未支付' }}
           </text>
         </view>
-        <view v-if="order.status >= ORDER_STATUS.SHIPPED.code || order.shipped_at" class="info-row">
+        <view v-if="order.shipped_at" class="info-row">
           <text class="info-label">发货时间</text>
           <text class="info-value" :class="{ 'info-value--muted': !order.shipped_at }">
             {{ order.shipped_at ? formatDate(order.shipped_at) : '未发货' }}
           </text>
         </view>
-        <view v-if="order.status >= ORDER_STATUS.COMPLETED.code || order.completed_at" class="info-row">
+        <view v-if="order.completed_at" class="info-row">
           <text class="info-label">完成时间</text>
           <text class="info-value" :class="{ 'info-value--muted': !order.completed_at }">
             {{ order.completed_at ? formatDate(order.completed_at) : '未完成' }}
@@ -153,8 +153,8 @@
       <!-- Fixed Bottom Action Bar -->
       <view class="bottom-bar">
         <view class="bottom-actions">
-          <!-- Status 0: 待付款 -->
-          <template v-if="order.status === 0">
+          <!-- Status: pending_payment -->
+          <template v-if="order.status === 'pending_payment' || order.status === '0' ">
             <view class="btn-border" hover-class="btn-hover" @tap="handleCancelOrder">
               <text class="btn-border-text">取消订单</text>
             </view>
@@ -162,8 +162,8 @@
               <text class="btn-solid-text">立即付款</text>
             </view>
           </template>
-          <!-- Status 1: 待发货 -->
-          <template v-else-if="order.status === 1">
+          <!-- Status: pending_shipping -->
+          <template v-else-if="order.status === 'pending_shipping' || order.status === '1' ">
             <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder">
               <text class="btn-border-text">申请退款</text>
             </view>
@@ -171,8 +171,8 @@
               <text class="btn-solid-text">提醒发货</text>
             </view>
           </template>
-          <!-- Status 2: 已发货 -->
-          <template v-else-if="order.status === 2">
+          <!-- Status: shipped -->
+          <template v-else-if="order.status === 'shipped' || order.status === '2' ">
             <view class="btn-border" hover-class="btn-hover" @tap="handleViewLogistics">
               <text class="btn-border-text">查看物流</text>
             </view>
@@ -180,13 +180,13 @@
               <text class="btn-solid-text">确认收货</text>
             </view>
           </template>
-          <!-- Status 3: 已完成 -->
-          <template v-else-if="order.status === 3">
+          <!-- Status: completed -->
+          <template v-else-if="order.status === 'completed' || order.status === '3' ">
             <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleBuyAgain">
               <text class="btn-solid-text">再次购买</text>
             </view>
           </template>
-          <!-- Status 4/5: 已取消/退款中 -->
+          <!-- Status: cancelled/refunding -->
           <template v-else>
             <view class="btn-solid btn-solid--muted" hover-class="btn-solid-hover" @tap="handleBuyAgain">
               <text class="btn-solid-text">再次购买</text>
@@ -214,48 +214,64 @@ const loading = ref<boolean>(true)
 const errorMsg = ref<string>('')
 
 // ── Status Helpers ────────────────────────────
-function getStatusInfo(status: number): { label: string; color: string; bg: string } {
-  const map: Record<number, { label: string; color: string; bg: string }> = {
-    [ORDER_STATUS.PENDING_PAYMENT.code]: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    [ORDER_STATUS.PENDING_SHIPPING.code]: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    [ORDER_STATUS.SHIPPED.code]: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    [ORDER_STATUS.COMPLETED.code]: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    [ORDER_STATUS.CANCELLED.code]: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    [ORDER_STATUS.REFUNDING.code]: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+function getStatusInfo(status: string | number): { label: string; color: string; bg: string } {
+  const s = String(status)
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    ['pending_payment']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['pending_shipping']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
+    ['shipped']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
+    ['completed']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
+    ['cancelled']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
+    ['refunding']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['0']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['1']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
+    ['2']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
+    ['3']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
+    ['4']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
+    ['5']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
   }
-  return map[status] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
+  return map[s] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
 }
 
-function getPlaceholderClass(id: number): string {
+function getPlaceholderClass(id: string | number): string {
   const classes = ['img-ph--0', 'img-ph--1', 'img-ph--2', 'img-ph--3']
-  return classes[id % classes.length]
+  const n = typeof id === 'string' ? id.length : id
+  return classes[n % classes.length]
 }
 
 // ── Computed ──────────────────────────────────
 const statusIcon = computed(() => {
   if (!order.value) return '📦'
-  const icons: Record<number, string> = {
-    [ORDER_STATUS.PENDING_PAYMENT.code]: '📦',
-    [ORDER_STATUS.PENDING_SHIPPING.code]: '📦',
-    [ORDER_STATUS.SHIPPED.code]: '🚚',
-    [ORDER_STATUS.COMPLETED.code]: '✅',
-    [ORDER_STATUS.CANCELLED.code]: '❌',
-    [ORDER_STATUS.REFUNDING.code]: '❌',
+  const s = String(order.value.status)
+  const icons: Record<string, string> = {
+    ['pending_payment']: '📦', ['0']: '📦',
+    ['pending_shipping']: '📦', ['1']: '📦',
+    ['shipped']: '🚚', ['2']: '🚚',
+    ['completed']: '✅', ['3']: '✅',
+    ['cancelled']: '❌', ['4']: '❌',
+    ['refunding']: '❌', ['5']: '❌',
   }
-  return icons[order.value.status] || '📦'
+  return icons[s] || '📦'
 })
 
 const statusSubText = computed(() => {
   if (!order.value) return ''
-  const texts: Record<number, string> = {
-    [ORDER_STATUS.PENDING_PAYMENT.code]: '请尽快付款，订单将在30分钟后自动取消',
-    [ORDER_STATUS.PENDING_SHIPPING.code]: '已支付，等待卖家发货',
-    [ORDER_STATUS.SHIPPED.code]: '商品已发出，请注意查收',
-    [ORDER_STATUS.COMPLETED.code]: '交易已完成，期待您的再次光临',
-    [ORDER_STATUS.CANCELLED.code]: '订单已取消',
-    [ORDER_STATUS.REFUNDING.code]: '退款处理中，请耐心等待',
+  const s = String(order.value.status)
+  const texts: Record<string, string> = {
+    ['pending_payment']: '请尽快付款，订单将在30分钟后自动取消',
+    ['0']: '请尽快付款，订单将在30分钟后自动取消',
+    ['pending_shipping']: '已支付，等待卖家发货',
+    ['1']: '已支付，等待卖家发货',
+    ['shipped']: '商品已发出，请注意查收',
+    ['2']: '商品已发出，请注意查收',
+    ['completed']: '交易已完成，期待您的再次光临',
+    ['3']: '交易已完成，期待您的再次光临',
+    ['cancelled']: '订单已取消',
+    ['4']: '订单已取消',
+    ['refunding']: '退款处理中，请耐心等待',
+    ['5']: '退款处理中，请耐心等待',
   }
-  return texts[order.value.status] || ''
+  return texts[s] || ''
 })
 
 // ── Data Loading ──────────────────────────────
@@ -273,7 +289,7 @@ async function loadOrderDetail() {
       return
     }
 
-    const res = await getOrderDetail(Number(orderId))
+    const res = await getOrderDetail(String(orderId))
     order.value = res.data
   } catch (err: any) {
     errorMsg.value = err.message || '加载失败，请稍后重试'

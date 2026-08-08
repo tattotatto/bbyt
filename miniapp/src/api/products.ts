@@ -1,92 +1,41 @@
 import http from './request'
 
-export interface Product {
-  id: number
-  name: string
-  description: string
-  images: string[]
-  age_range: string       // e.g. "3-6岁"
-  category_id: number
-  category_name: string
-  price_min: number
-  price_max: number
-  stock: number
-  unit: string            // e.g. "件", "套", "箱"
-  moq: number             // minimum order quantity
-  safety_certifications: string[]  // e.g. ["3C", "CE"]
-  material: string
-  brand: string
-  is_hot: boolean
-  is_new: boolean
-  sales_count: number
-  created_at: string
-}
+// ── Common types ──────────────────────────────────────────────────────────────
+export interface Paginated<T> { items: T[]; total: number; page: number; page_size: number }
+export interface Category { id: string; parent_id: string | null; name: string; icon: string | null; sort_order: number; status: string; children: Category[] }
+export interface PricingTier { qty: number; price: number }
 
+// ── Product types ─────────────────────────────────────────────────────────────
+export interface ProductListItem {
+  id: string; name: string; images: string[]; age_range: string | null;
+  safety_certifications: unknown[]; is_virtual: boolean; stock: number | null;
+  min_order_qty: number; status: string; price_min: number | null; price_max: number | null;
+  // @deprecated backward-compat
+  description?: string | null; category_name?: string; unit?: string; moq?: number;
+  is_hot?: boolean; is_new?: boolean; sales_count?: number; material?: string; brand?: string
+}
+export interface ProductDetail {
+  id: string; category_id: string | null; name: string; images: string[]; description: string | null;
+  specs: Record<string, string[]> | { name: string; options: string[] }[] | null; age_range: string | null; safety_certifications: unknown[];
+  is_virtual: boolean; virtual_detail: unknown; stock: number | null; min_order_qty: number;
+  pricing_rules: Record<string, PricingTier[]>; status: string; category: Category | null;
+  created_at: string | null; updated_at: string | null;
+  // @deprecated backward-compat
+  price_min?: number | null; price_max?: number | null; moq?: number; unit?: string;
+  detail_images?: string[]; price_tiers?: PricingTier[]; sales_count?: number;
+  related_products?: ProductListItem[]; category_name?: string
+}
 export interface ProductListParams {
-  page?: number
-  page_size?: number
-  category_id?: number
-  age_range?: string
-  keyword?: string
-  sort?: 'default' | 'price_asc' | 'price_desc' | 'sales_desc' | 'newest'
-  min_price?: number
-  max_price?: number
+  page?: number; page_size?: number; category_id?: string; age_range?: string; keyword?: string;
+  sort?: 'newest' | 'sales_desc' | 'price_asc' | 'price_desc'
 }
 
-export interface ProductListResult {
-  list: Product[]
-  total: number
-  page: number
-  page_size: number
-}
+// Backward-compat alias
+export type Product = ProductListItem
 
-// Price tier (quantity-based pricing)
-export interface PriceTier {
-  min_qty: number
-  max_qty: number
-  unit_price: number
-}
-
-export interface ProductDetail extends Product {
-  detail_images: string[]
-  price_tiers: PriceTier[]
-  specs: ProductSpec[]
-  related_products: Product[]
-}
-
-export interface ProductSpec {
-  name: string
-  options: string[]
-}
-
-// Get product list
-export function getProductList(params: ProductListParams): Promise<{ data: ProductListResult }> {
-  return http.get<ProductListResult>('/products', params)
-}
-
-// Get product detail
-export function getProductDetail(id: number): Promise<{ data: ProductDetail }> {
-  return http.get<ProductDetail>(`/products/${id}`)
-}
-
-// Get hot products
-export function getHotProducts(limit?: number): Promise<{ data: Product[] }> {
-  return http.get<Product[]>('/products/hot', { limit: limit || 10 })
-}
-
-// Get new arrivals
-export function getNewProducts(limit?: number): Promise<{ data: Product[] }> {
-  return http.get<Product[]>('/products/new', { limit: limit || 10 })
-}
-
-// Get product categories
-export function getCategories(): Promise<{ data: Category[] }> {
-  return http.get<Category[]>('/categories')
-}
-
-export interface Category {
-  id: number
-  name: string
-  icon: string
-  children?: Category[]
-}
+// ── API functions ─────────────────────────────────────────────────────────────
+export const getProductList = (params?: ProductListParams) => http.get<Paginated<ProductListItem>>('/products', params)
+export const getProductDetail = (id: string) => http.get<ProductDetail>(`/products/${id}`)
+export const getHotProducts = (limit = 10) => http.get<ProductListItem[]>('/products/hot', { limit })
+export const getNewProducts = (limit = 10) => http.get<ProductListItem[]>('/products/new', { limit })
+export const getCategories = () => http.get<Category[]>('/products/categories')

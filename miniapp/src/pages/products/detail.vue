@@ -57,28 +57,28 @@
 
         <view class="price-row">
           <text class="price-text">
-            {{ formatPrice(product.price_min) }}
-            <text v-if="product.price_min !== product.price_max"> - {{ formatPrice(product.price_max) }}</text>
+            {{ formatPrice((product as any).price_min ?? product.price_min ?? 0) }}
+            <text v-if="(product as any).price_min !== (product as any).price_max"> - {{ formatPrice((product as any).price_max ?? product.price_max ?? 0) }}</text>
           </text>
         </view>
 
         <view class="tags-row">
-          <AgeTag :range="product.age_range" size="medium" />
+          <AgeTag :range="product.age_range ?? ''" size="medium" />
           <CertBadge
-            v-for="cert in product.safety_certifications"
+            v-for="cert in (product.safety_certifications as any[])"
             :key="cert"
-            :name="cert"
+            :name="cert as string"
           />
         </view>
 
         <view class="meta-row">
-          <text class="meta-text">已售{{ product.sales_count }}件</text>
+          <text class="meta-text">已售{{ (product as any).sales_count ?? 0 }}件</text>
           <text class="meta-divider">·</text>
-          <text class="meta-text">库存{{ product.stock }}件</text>
+          <text class="meta-text">库存{{ product.stock ?? 0 }}件</text>
           <text class="meta-divider">·</text>
-          <text class="meta-text">{{ product.moq }}件起批</text>
+          <text class="meta-text">{{ (product as any).moq ?? 1 }}件起批</text>
           <text class="meta-divider">·</text>
-          <text class="meta-text">{{ product.unit }}</text>
+          <text class="meta-text">{{ (product as any).unit ?? '' }}</text>
         </view>
       </view>
 
@@ -86,11 +86,11 @@
       <view class="section-divider" />
 
       <!-- Specs (if any) -->
-      <view v-if="product.specs && product.specs.length > 0" class="spec-section">
+      <view v-if="(product.specs as any) && ((product.specs as any).length > 0 || Object.keys(product.specs!).length > 0)" class="spec-section">
         <text class="section-title">规格选择</text>
         <view class="spec-grid">
           <view
-            v-for="(spec, si) in product.specs"
+            v-for="(spec, si) in ((product.specs as any) as Array<{name: string; options: string[]}>)"
             :key="si"
             class="spec-group"
           >
@@ -110,13 +110,13 @@
       </view>
 
       <!-- Divider -->
-      <view v-if="product.specs && product.specs.length > 0" class="section-divider" />
+      <view v-if="(product.specs as any) && ((product.specs as any).length > 0 || Object.keys(product.specs!).length > 0)" class="section-divider" />
 
       <!-- Price Table -->
-      <view v-if="product.price_tiers && product.price_tiers.length > 0" class="section">
+      <view v-if="(product.price_tiers && product.price_tiers.length > 0) || Object.keys(product.pricing_rules || {}).length > 0" class="section">
         <text class="section-title">批发价格表</text>
         <PriceTable
-          :pricingRules="product.price_tiers"
+          :pricingRules="(product.price_tiers as any) || product.pricing_rules"
           :userLevel="userStore.userLevel"
           :qty="quantity"
         />
@@ -130,7 +130,7 @@
         <text class="section-title">购买数量</text>
         <view class="stepper">
           <view
-            :class="['stepper-btn', { disabled: quantity <= (product.moq || 1) }]"
+            :class="['stepper-btn', { disabled: quantity <= ((product as any).moq || 1) }]"
             @tap="decreaseQty"
           >
             <text class="stepper-btn-text">−</text>
@@ -141,14 +141,14 @@
             v-model.number="quantity"
           />
           <view
-            :class="['stepper-btn', { disabled: quantity >= product.stock }]"
+            :class="['stepper-btn', { disabled: quantity >= (product.stock ?? 9999) }]"
             @tap="increaseQty"
           >
             <text class="stepper-btn-text">+</text>
           </view>
         </view>
         <text class="stepper-hint">
-          起订{{ product.moq }}{{ product.unit }} · 库存{{ product.stock }}{{ product.unit }}
+          起订{{ (product as any).moq ?? 1 }}{{ (product as any).unit ?? '' }} · 库存{{ product.stock ?? 0 }}{{ (product as any).unit ?? '' }}
         </text>
       </view>
 
@@ -160,7 +160,7 @@
         <text class="section-title">商品详情</text>
         <text class="desc-text">{{ product.description }}</text>
         <image
-          v-for="(img, i) in product.detail_images"
+          v-for="(img, i) in (product.detail_images || [])"
           :key="'desc-' + i"
           :src="img"
           mode="widthFix"
@@ -232,21 +232,22 @@ const allImages = computed(() => {
 })
 
 // ── Load product detail ────────────────────────────────
-async function loadProduct(id: number) {
+async function loadProduct(id: string | number) {
   loading.value = true
   errorMsg.value = ''
 
   try {
-    const res = await getProductDetail(id)
+    const res = await getProductDetail(String(id))
     product.value = res.data
 
     // Set default quantity to MOQ
-    quantity.value = res.data.moq || 1
+    quantity.value = (res.data as any).moq || 1
 
     // Initialize spec selections to first option of each spec
-    if (res.data.specs && res.data.specs.length > 0) {
+    const specsArr = (res.data.specs as any) as Array<{ name: string; options: string[] }> | null
+    if (specsArr && specsArr.length > 0) {
       const initial: Record<number, string> = {}
-      res.data.specs.forEach((spec, idx) => {
+      specsArr.forEach((spec, idx) => {
         if (spec.options && spec.options.length > 0) {
           initial[idx] = spec.options[0]
         }
@@ -267,18 +268,19 @@ function selectSpec(specIdx: number, option: string) {
 
 // ── Get formatted selected spec string ─────────────────
 function getSelectedSpec(): string {
-  if (!product.value?.specs || product.value.specs.length === 0) {
+  const specsArr = (product.value?.specs as any) as Array<{ name: string; options: string[] }> | null | undefined
+  if (!specsArr || specsArr.length === 0) {
     return '默认'
   }
-  return product.value.specs
-    .map((s, i) => selectedSpecs.value[i] || '')
+  return specsArr
+    .map((_s, i) => selectedSpecs.value[i] || '')
     .filter(Boolean)
     .join(' / ') || '默认'
 }
 
 // ── Quantity stepper ───────────────────────────────────
 function decreaseQty() {
-  const moq = product.value?.moq || 1
+  const moq = (product.value as any)?.moq || 1
   if (quantity.value > moq) {
     quantity.value--
   }
@@ -296,14 +298,14 @@ function addToCart() {
   if (!product.value) return
 
   cartStore.addItem({
-    productId: product.value.id,
+    productId: product.value.id as any,
     productName: product.value.name,
     productImage: product.value.images?.[0] || '',
     spec: getSelectedSpec(),
-    unitPrice: product.value.price_min,
+    unitPrice: (product.value as any).price_min ?? product.value.price_min ?? 0,
     quantity: quantity.value,
-    stock: product.value.stock,
-    minOrderQty: product.value.moq
+    stock: product.value.stock ?? 0,
+    minOrderQty: (product.value as any).moq ?? product.value.min_order_qty
   })
 
   showSuccess('已加入购物车')
@@ -335,9 +337,9 @@ function retry() {
 
 // ── Lifecycle ──────────────────────────────────────────
 onLoad((options: any) => {
-  const id = Number(options?.id)
-  if (id && !isNaN(id)) {
-    loadProduct(id)
+  const id = options?.id
+  if (id) {
+    loadProduct(String(id))
   } else {
     errorMsg.value = '商品ID无效'
   }

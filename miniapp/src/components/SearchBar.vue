@@ -56,12 +56,14 @@ const emit = defineEmits<{
   clear: []
 }>()
 
-function onInput(e: { detail: { value: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function onInput(e: any) {
   const val = e.detail.value || ''
   emit('update:modelValue', val)
 }
 
-function onConfirm(e: { detail: { value: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function onConfirm(e: any) {
   const keyword = (e.detail.value || '').trim()
   if (keyword) {
     emit('search', keyword)

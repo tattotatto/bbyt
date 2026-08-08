@@ -156,7 +156,7 @@
           <CaseCard
             v-for="caseItem in caseItems"
             :key="caseItem.id"
-            :case="caseItem"
+            :caseData="caseItem"
             class="home-case-card"
             @click="goToCase"
           />
@@ -291,7 +291,7 @@ async function fetchBanners() {
       gradient: BANNER_GRADIENTS[i % BANNER_GRADIENTS.length],
       emoji: BANNER_EMOJIS[i % BANNER_EMOJIS.length],
       title: p.name,
-      desc: p.description ? p.description.slice(0, 20) : `${p.age_range} · 爆款热销`
+      desc: (p as any).description ? (p as any).description.slice(0, 20) : `${p.age_range || ''} · 爆款热销`
     }))
   } catch {
     // Banner failure is non-critical; use fallback
@@ -380,11 +380,11 @@ async function fetchHotProducts(reset = true) {
       page_size: PAGE_SIZE,
       sort: 'sales_desc'
     })
-    const { list, total } = res.data
+    const { items, total } = res.data
     if (reset) {
-      hotProducts.value = list || []
+      hotProducts.value = items || []
     } else {
-      hotProducts.value.push(...(list || []))
+      hotProducts.value.push(...(items || []))
     }
     hotTotal.value = total
     hotNoMore.value = hotProducts.value.length >= total

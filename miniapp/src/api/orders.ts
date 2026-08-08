@@ -1,112 +1,32 @@
 import http from './request'
+import type { Paginated } from './products'
 
+// ── Order types ───────────────────────────────────────────────────────────────
 export interface OrderItem {
-  product_id: number
-  product_name: string
-  product_image: string
-  spec: string
-  unit_price: number
-  quantity: number
-  total_price: number
+  product_id: string; name: string; qty: number; unit_price: number; subtotal: number; image?: string | null;
+  // @deprecated backward-compat
+  product_name?: string; product_image?: string; spec?: string; quantity?: number; total_price?: number
 }
-
 export interface Order {
-  id: number
-  order_no: string
-  status: number           // 0-5 matching ORDER_STATUS
-  status_label: string
-  items: OrderItem[]
-  total_amount: number
-  discount_amount: number
-  final_amount: number
-  shipping_address: Address
-  shipping_method: string
-  tracking_no?: string
-  remark: string
-  created_at: string
-  paid_at?: string
-  shipped_at?: string
-  completed_at?: string
+  id: string; order_no: string; type: string; retailer_id: string; items: OrderItem[];
+  total_amount: number; payment_method: string | null; payment_status: string; status: string;
+  receiver_name?: string | null; receiver_phone?: string | null; receiver_address?: string | null;
+  remark?: string | null; timeline?: unknown[]; created_at?: string | null;
+  // @deprecated backward-compat
+  status_label?: string; shipping_address?: { name: string; phone: string; province: string; city: string; district: string; detail: string } | null;
+  tracking_no?: string; discount_amount?: number; final_amount?: number;
+  shipping_method?: string; paid_at?: string; shipped_at?: string; completed_at?: string
 }
-
-export interface Address {
-  id?: number
-  name: string
-  phone: string
-  province: string
-  city: string
-  district: string
-  detail: string
-  is_default: boolean
-}
-
 export interface CreateOrderParams {
-  items: Array<{
-    product_id: number
-    spec: string
-    quantity: number
-  }>
-  address_id: number
-  remark?: string
+  items: { product_id: string; name: string; qty: number; unit_price: number; subtotal: number }[];
+  payment_method: string; remark?: string; receiver_name?: string; receiver_phone?: string; receiver_address?: string
 }
 
-export interface OrderListParams {
-  page?: number
-  page_size?: number
-  status?: number
-}
-
-export interface OrderListResult {
-  list: Order[]
-  total: number
-  page: number
-  page_size: number
-}
-
-// Create order
-export function createOrder(params: CreateOrderParams): Promise<{ data: { order_id: number; order_no: string; final_amount: number } }> {
-  return http.post('/orders', params)
-}
-
-// Get order list
-export function getOrderList(params: OrderListParams): Promise<{ data: OrderListResult }> {
-  return http.get<OrderListResult>('/orders', params)
-}
-
-// Get order detail
-export function getOrderDetail(id: number): Promise<{ data: Order }> {
-  return http.get<Order>(`/orders/${id}`)
-}
-
-// Cancel order
-export function cancelOrder(id: number, reason?: string): Promise<{ data: { success: boolean } }> {
-  return http.put(`/orders/${id}/cancel`, { reason })
-}
-
-// Confirm receipt
-export function confirmReceipt(id: number): Promise<{ data: { success: boolean } }> {
-  return http.put(`/orders/${id}/confirm`)
-}
-
-// Request refund
-export function requestRefund(id: number, reason: string): Promise<{ data: { success: boolean } }> {
-  return http.post(`/orders/${id}/refund`, { reason })
-}
-
-// Get address list
-export function getAddressList(): Promise<{ data: Address[] }> {
-  return http.get<Address[]>('/user/addresses')
-}
-
-// Save address
-export function saveAddress(address: Omit<Address, 'id'> & { id?: number }): Promise<{ data: Address }> {
-  if (address.id) {
-    return http.put<Address>(`/user/addresses/${address.id}`, address)
-  }
-  return http.post<Address>('/user/addresses', address)
-}
-
-// Delete address
-export function deleteAddress(id: number): Promise<{ data: { success: boolean } }> {
-  return http.delete(`/user/addresses/${id}`)
-}
+// ── API functions ─────────────────────────────────────────────────────────────
+export const createOrder = (params: CreateOrderParams) => http.post<Order>('/orders', params)
+export const getOrderList = (params?: { page?: number; page_size?: number; status?: string }) =>
+  http.get<Paginated<Order>>('/orders', params)
+export const getOrderDetail = (id: string) => http.get<Order>(`/orders/${id}`)
+export const cancelOrder = (id: string) => http.post(`/orders/${id}/cancel`)
+export const confirmReceipt = (id: string) => http.post(`/orders/${id}/confirm`)
+export const requestRefund = (id: string) => http.post(`/orders/${id}/refund`)

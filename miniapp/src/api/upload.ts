@@ -1,6 +1,7 @@
+import { API_BASE_URL } from '../utils/constants'
 import { getToken } from './request'
 
-const BASE_URL = 'https://baby.mx.yn.cn/api/v1'
+const BASE_URL = API_BASE_URL
 
 export interface UploadResult {
   code: number
@@ -64,7 +65,8 @@ export function chooseAndUploadImage(sourceType: ('album' | 'camera')[] = ['albu
       sizeType: ['compressed'],
       sourceType,
       success(res) {
-        uploadMultipleFiles(res.tempFilePaths).then(resolve).catch(reject)
+        const paths: string[] = Array.isArray(res.tempFilePaths) ? res.tempFilePaths : [res.tempFilePaths]
+        uploadMultipleFiles(paths).then(resolve).catch(reject)
       },
       fail(err) {
         reject(err)

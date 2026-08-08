@@ -61,7 +61,7 @@
 
     <!-- Case Waterfall Grid -->
     <view v-else class="case-grid">
-      <CaseCard v-for="c in cases" :key="c.id" :case="c" @click="goToDetail" />
+      <CaseCard v-for="c in cases" :key="c.id" :caseData="c" @click="goToDetail" />
     </view>
 
     <!-- Load More -->
@@ -81,6 +81,7 @@ import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { getCaseList, getStyleTags, getCategoryTags } from '../../api/cases'
 import type { DesignCase } from '../../api/cases'
+import { PAGE_SIZE } from '../../utils/constants'
 
 const loading = ref(true)
 const errorMsg = ref('')
@@ -134,7 +135,7 @@ async function loadCases(isRefresh = false) {
       cases.value = [...cases.value, ...res.data.list]
     }
 
-    hasMore.value = res.data.list.length >= 20
+    hasMore.value = res.data.list.length >= PAGE_SIZE
   } catch (err: any) {
     errorMsg.value = err.message || '加载失败'
   } finally {
@@ -173,8 +174,8 @@ function onSearch(kw: string) {
   loadCases()
 }
 
-function goToDetail(caseData: DesignCase) {
-  uni.navigateTo({ url: '/pages/cases/detail?id=' + caseData.id })
+function goToDetail(id: string | number) {
+  uni.navigateTo({ url: '/pages/cases/detail?id=' + id })
 }
 
 function retry() {

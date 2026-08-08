@@ -39,7 +39,7 @@ interface DesignCase {
 }
 
 interface Props {
-  case: DesignCase
+  caseData: DesignCase
 }
 
 const props = defineProps<Props>()
@@ -49,7 +49,7 @@ const emit = defineEmits<{
 }>()
 
 function handleClick() {
-  emit('click', props.case.id)
+  emit('click', props.caseData.id)
 }
 </script>
 

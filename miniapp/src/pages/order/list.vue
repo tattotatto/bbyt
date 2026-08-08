@@ -87,10 +87,10 @@
 
         <!-- Bottom Action Row -->
         <view class="order-bottom">
-          <text class="order-total">合计：{{ formatPrice(order.final_amount) }}</text>
+          <text class="order-total">合计：{{ formatPrice(order.final_amount ?? order.total_amount) }}</text>
           <view class="order-actions">
-            <!-- Status 0: 待付款 -->
-            <template v-if="order.status === 0">
+            <!-- Status: pending_payment -->
+            <template v-if="order.status === 'pending_payment' || order.status === '0' ">
               <view class="btn-border" hover-class="btn-hover" @tap="handleCancelOrder(order)">
                 <text class="btn-border-text">取消订单</text>
               </view>
@@ -98,8 +98,8 @@
                 <text class="btn-solid-text">立即付款</text>
               </view>
             </template>
-            <!-- Status 1: 待发货 -->
-            <template v-else-if="order.status === 1">
+            <!-- Status: pending_shipping -->
+            <template v-else-if="order.status === 'pending_shipping' || order.status === '1' ">
               <view class="btn-border" hover-class="btn-hover" @tap="handleRefundOrder(order)">
                 <text class="btn-border-text">申请退款</text>
               </view>
@@ -107,8 +107,8 @@
                 <text class="btn-solid-text">提醒发货</text>
               </view>
             </template>
-            <!-- Status 2: 已发货 -->
-            <template v-else-if="order.status === 2">
+            <!-- Status: shipped -->
+            <template v-else-if="order.status === 'shipped' || order.status === '2' ">
               <view class="btn-border" hover-class="btn-hover" @tap="handleViewLogistics(order)">
                 <text class="btn-border-text">查看物流</text>
               </view>
@@ -116,13 +116,13 @@
                 <text class="btn-solid-text">确认收货</text>
               </view>
             </template>
-            <!-- Status 3: 已完成 -->
-            <template v-else-if="order.status === 3">
+            <!-- Status: completed -->
+            <template v-else-if="order.status === 'completed' || order.status === '3' ">
               <view class="btn-solid" hover-class="btn-solid-hover" @tap="handleBuyAgain(order)">
                 <text class="btn-solid-text">再次购买</text>
               </view>
             </template>
-            <!-- Status 4/5: 已取消/退款中 -->
+            <!-- Status: cancelled/refunding -->
             <template v-else>
               <view class="btn-solid btn-solid--muted" hover-class="btn-solid-hover" @tap="handleBuyAgain(order)">
                 <text class="btn-solid-text">再次购买</text>
@@ -158,15 +158,15 @@ import { ORDER_STATUS, PAGE_SIZE } from '../../utils/constants'
 interface TabItem {
   label: string
   value: string
-  statusCode: number | undefined
+  statusCode: string | undefined
 }
 
 const tabs: TabItem[] = [
   { label: '全部', value: 'all', statusCode: undefined },
-  { label: '待付款', value: 'pending_payment', statusCode: ORDER_STATUS.PENDING_PAYMENT.code },
-  { label: '待发货', value: 'pending_shipping', statusCode: ORDER_STATUS.PENDING_SHIPPING.code },
-  { label: '已发货', value: 'shipped', statusCode: ORDER_STATUS.SHIPPED.code },
-  { label: '已完成', value: 'completed', statusCode: ORDER_STATUS.COMPLETED.code },
+  { label: '待付款', value: 'pending_payment', statusCode: 'pending_payment' },
+  { label: '待发货', value: 'pending_shipping', statusCode: 'pending_shipping' },
+  { label: '已发货', value: 'shipped', statusCode: 'shipped' },
+  { label: '已完成', value: 'completed', statusCode: 'completed' },
 ]
 
 const activeTab = ref<string>('all')
@@ -181,21 +181,23 @@ const hasMore = ref<boolean>(true)
 const total = ref<number>(0)
 
 // ── Status Helpers ────────────────────────────
-function getStatusInfo(status: number): { label: string; color: string; bg: string } {
-  const map: Record<number, { label: string; color: string; bg: string }> = {
-    [ORDER_STATUS.PENDING_PAYMENT.code]: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
-    [ORDER_STATUS.PENDING_SHIPPING.code]: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
-    [ORDER_STATUS.SHIPPED.code]: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
-    [ORDER_STATUS.COMPLETED.code]: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
-    [ORDER_STATUS.CANCELLED.code]: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
-    [ORDER_STATUS.REFUNDING.code]: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
+function getStatusInfo(status: string | number): { label: string; color: string; bg: string } {
+  const s = String(status)
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    ['pending_payment']: { label: ORDER_STATUS.PENDING_PAYMENT.label, color: '#FF7B7B', bg: '#FFF0F0' },
+    ['pending_shipping']: { label: ORDER_STATUS.PENDING_SHIPPING.label, color: '#FF9F43', bg: '#FFF8F0' },
+    ['shipped']: { label: ORDER_STATUS.SHIPPED.label, color: '#7EC8E3', bg: '#F0F8FB' },
+    ['completed']: { label: ORDER_STATUS.COMPLETED.label, color: '#A8D8B9', bg: '#F2FAF5' },
+    ['cancelled']: { label: ORDER_STATUS.CANCELLED.label, color: '#7a6a5a', bg: '#F5F5F5' },
+    ['refunding']: { label: ORDER_STATUS.REFUNDING.label, color: '#FF7B7B', bg: '#FFF0F0' },
   }
-  return map[status] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
+  return map[s] || { label: '未知', color: '#7a6a5a', bg: '#F5F5F5' }
 }
 
-function getPlaceholderClass(id: number): string {
+function getPlaceholderClass(id: string | number): string {
   const classes = ['img-ph--0', 'img-ph--1', 'img-ph--2', 'img-ph--3']
-  return classes[id % classes.length]
+  const n = typeof id === 'string' ? id.length : id
+  return classes[n % classes.length]
 }
 
 // ── Data Loading ──────────────────────────────
@@ -218,9 +220,9 @@ async function loadOrders(reset: boolean = false) {
     const result = res.data
 
     if (reset) {
-      orders.value = result.list
+      orders.value = result.items
     } else {
-      orders.value = [...orders.value, ...result.list]
+      orders.value = [...orders.value, ...result.items]
     }
 
     total.value = result.total
@@ -273,7 +275,7 @@ function onScrollToLower() {
 }
 
 // ── Navigation ────────────────────────────────
-function goToDetail(orderId: number) {
+function goToDetail(orderId: string | number) {
   uni.navigateTo({ url: `/pages/order/detail?id=${orderId}` })
 }
 

@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '../utils/constants'
+
 // Types
 interface RequestOptions {
   url: string
@@ -14,8 +16,8 @@ interface ResponseData<T = any> {
   data: T
 }
 
-// API base URL (use constants import)
-const BASE_URL = 'https://baby.mx.yn.cn/api/v1'
+// API base URL (from shared constants)
+export const BASE_URL = API_BASE_URL
 
 // Storage keys
 const TOKEN_KEY = 'hxmall_token'
@@ -65,13 +67,14 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
   }
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [error, res] = await uni.request({
       url: BASE_URL + url,
       method,
       data,
       header: headers,
       timeout: 30000
-    })
+    }) as any
 
     if (showLoading) uni.hideLoading()
 
@@ -97,13 +100,14 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
           refreshQueue = []
           // Retry original request with new token
           headers['Authorization'] = `Bearer ${newToken}`
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const [retryError, retryRes] = await uni.request({
             url: BASE_URL + url,
             method,
             data,
             header: headers,
             timeout: 30000
-          })
+          }) as any
           if (retryError) return Promise.reject(retryError)
           return retryRes.data as ResponseData<T>
         } catch (refreshError) {
@@ -119,13 +123,14 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
         return new Promise((resolve, reject) => {
           refreshQueue.push(async (newToken: string) => {
             headers['Authorization'] = `Bearer ${newToken}`
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const [qError, qRes] = await uni.request({
               url: BASE_URL + url,
               method,
               data,
               header: headers,
               timeout: 30000
-            })
+            }) as any
             if (qError) reject(qError)
             else resolve(qRes.data as ResponseData<T>)
           })
@@ -158,12 +163,13 @@ async function refreshAccessToken(): Promise<string> {
     throw new Error('No refresh token available')
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [error, res] = await uni.request({
     url: BASE_URL + '/auth/refresh',
     method: 'POST',
     data: { refresh_token: refreshToken },
     header: { 'Content-Type': 'application/json' }
-  })
+  }) as any
 
   if (error) throw error
 

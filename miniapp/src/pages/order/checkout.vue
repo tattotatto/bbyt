@@ -137,8 +137,9 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import EmptyState from '../../components/EmptyState.vue'
-import { createOrder, getAddressList } from '../../api/orders'
-import type { Address } from '../../api/orders'
+import { createOrder } from '../../api/orders'
+import { getAddressList } from '../../api/address'
+import type { Address } from '../../api/address'
 import { useUserStore } from '../../stores/user'
 import { useCartStore } from '../../stores/cart'
 import {
@@ -266,14 +267,20 @@ async function submitOrder() {
   showLoading('提交中...')
 
   try {
+    const addr = selectedAddress.value!
     const res = await createOrder({
-      items: checkoutItems.value.map((item) => ({
+      items: checkoutItems.value.map((item: any) => ({
         product_id: item.productId,
-        spec: item.spec,
-        quantity: item.quantity,
+        name: item.productName || '',
+        qty: item.quantity,
+        unit_price: item.unitPrice,
+        subtotal: parseFloat((item.unitPrice * item.quantity).toFixed(2)),
       })),
-      address_id: selectedAddress.value.id!,
+      payment_method: paymentMethod.value,
       remark: remark.value || undefined,
+      receiver_name: addr.name,
+      receiver_phone: addr.phone,
+      receiver_address: `${addr.province}${addr.city}${addr.district}${addr.detail}`,
     })
 
     hideLoading()
@@ -281,7 +288,7 @@ async function submitOrder() {
     showSuccess('下单成功')
 
     setTimeout(() => {
-      uni.redirectTo({ url: `/pages/order/detail?id=${res.data.order_id}` })
+      uni.redirectTo({ url: `/pages/order/detail?id=${res.data.id}` })
     }, 1500)
   } catch (err: any) {
     hideLoading()

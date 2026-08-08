@@ -104,7 +104,7 @@ const hasMore = ref(true)
 // ── Filters ────────────────────────────────────────────
 const keyword = ref('')
 const activeCategoryId = ref(0)
-const categoryList = ref<{ id: number; name: string; icon: string }[]>([
+const categoryList = ref<{ id: string | number; name: string; icon: string }[]>([
   { id: 0, name: '全部', icon: '' }
 ])
 
@@ -131,10 +131,10 @@ const sortFilterLabel = computed(() => {
 async function loadCategories() {
   try {
     const res = await getCategories()
-    const list: { id: number; name: string; icon: string }[] = [{ id: 0, name: '全部', icon: '' }]
+    const list: { id: string | number; name: string; icon: string }[] = [{ id: 0, name: '全部', icon: '' }]
     if (res.data && res.data.length > 0) {
       res.data.forEach((cat: Category) => {
-        list.push({ id: cat.id, name: cat.name, icon: cat.icon })
+        list.push({ id: cat.id, name: cat.name, icon: cat.icon ?? '' })
       })
     }
     categoryList.value = list
@@ -174,11 +174,11 @@ async function loadProducts(isRefresh = false) {
     }
 
     const res = await getProductList(params)
-    let list = res.data.list || []
+    let list = res.data.items || []
 
     // Client-side stock filter
     if (onlyInStock.value) {
-      list = list.filter((p: Product) => p.stock > 0)
+      list = list.filter((p: Product) => (p.stock ?? 0) > 0)
     }
 
     if (isRefresh || page.value === 1) {
@@ -217,9 +217,9 @@ watch([ageFilterIndex, sortIndex, onlyInStock], () => {
 })
 
 // ── Event handlers ─────────────────────────────────────
-function onCategoryChange(catId: number) {
+function onCategoryChange(catId: string | number) {
   if (activeCategoryId.value === catId) return
-  activeCategoryId.value = catId
+  activeCategoryId.value = Number(catId) || 0
   page.value = 1
   loadProducts(true)
 }

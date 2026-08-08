@@ -5,4 +5,6 @@ declare module '*.vue' {
   export default component
 }
 
+declare module 'uview-plus'
+
 declare let uni: any
