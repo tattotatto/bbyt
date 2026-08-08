@@ -1,136 +1,196 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import {
+  getCart,
+  addCartItem,
+  updateCartItem,
+  removeCartItem,
+  clearCart,
+} from '../api/cart'
+import type { CartItemOut } from '../api/cart'
+import { useUserStore } from './user'
 
+// ── Local CartItem (extends backend shape with checked) ──────────────────────
 interface CartItem {
+  id: string
   productId: string
   productName: string
   productImage: string
-  spec: string          // Selected spec, e.g. "红色 / L码"
+  spec: string
   unitPrice: number
   quantity: number
   stock: number
-  minOrderQty: number   // MOQ
+  minOrderQty: number
   checked: boolean
 }
 
-const CART_STORAGE_KEY = 'hxmall_cart'
+// ── Map backend CartItemOut → local CartItem ─────────────────────────────────
+function mapCartItem(out: CartItemOut): CartItem {
+  return {
+    id: out.id,
+    productId: out.product_id,
+    productName: out.name,
+    productImage: out.image ?? '',
+    spec: out.spec,
+    unitPrice: out.unit_price_min ?? 0,
+    quantity: out.quantity,
+    stock: out.stock ?? 0,
+    minOrderQty: out.min_order_qty,
+    checked: true,
+  }
+}
 
 export const useCartStore = defineStore('cart', () => {
-  // State
+  // ── State ──────────────────────────────────────────────────────────────────
   const items = ref<CartItem[]>([])
 
-  // Getters
-  const totalCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
-  const checkedItems = computed(() => items.value.filter(item => item.checked))
-  const checkedCount = computed(() => checkedItems.value.reduce((sum, item) => sum + item.quantity, 0))
-  const totalPrice = computed(() => checkedItems.value.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0))
-  const isAllChecked = computed(() => items.value.length > 0 && items.value.every(item => item.checked))
+  // ── Getters ────────────────────────────────────────────────────────────────
+  const totalCount = computed(() =>
+    items.value.reduce((sum, item) => sum + item.quantity, 0),
+  )
+  const checkedItems = computed(() =>
+    items.value.filter(item => item.checked),
+  )
+  const checkedCount = computed(() =>
+    checkedItems.value.reduce((sum, item) => sum + item.quantity, 0),
+  )
+  const totalPrice = computed(() =>
+    checkedItems.value.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+  )
+  const isAllChecked = computed(() =>
+    items.value.length > 0 && items.value.every(item => item.checked),
+  )
   const isEmpty = computed(() => items.value.length === 0)
 
-  // Actions
+  // ── Actions ────────────────────────────────────────────────────────────────
 
-  // Initialize: load from storage
-  function init() {
+  /** Fetch cart from backend. If not logged in, clears items. */
+  async function fetch(): Promise<void> {
+    const user = useUserStore()
+    if (!user.isLoggedIn) {
+      items.value = []
+      return
+    }
     try {
-      const saved = uni.getStorageSync(CART_STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) items.value = parsed
-      }
-    } catch { /* ignore */ }
+      const res = await getCart()
+      items.value = (res.data || []).map(mapCartItem)
+    } catch {
+      // Silently keep current items on error
+    }
   }
 
-  // Persist to storage
-  function persist() {
+  /** Add item to cart. Requires login. */
+  async function addItem(input: {
+    productId: string
+    productName: string
+    productImage?: string
+    spec?: string
+    quantity: number
+    stock?: number
+    minOrderQty?: number
+  }): Promise<void> {
+    const user = useUserStore()
+    if (!user.isLoggedIn) {
+      uni.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
     try {
-      uni.setStorageSync(CART_STORAGE_KEY, JSON.stringify(items.value))
-    } catch { /* ignore */ }
-  }
-
-  // Add item to cart
-  function addItem(item: Omit<CartItem, 'checked'>) {
-    const existing = items.value.find(
-      i => i.productId === item.productId && i.spec === item.spec
-    )
-    if (existing) {
-      existing.quantity += item.quantity
-      // Don't exceed stock
-      if (existing.quantity > existing.stock) {
-        existing.quantity = existing.stock
-      }
-    } else {
-      items.value.push({ ...item, checked: true })
-    }
-    persist()
-  }
-
-  // Remove item from cart
-  function removeItem(productId: string, spec: string) {
-    const index = items.value.findIndex(i => i.productId === productId && i.spec === spec)
-    if (index > -1) {
-      items.value.splice(index, 1)
-      persist()
+      await addCartItem({
+        product_id: input.productId,
+        spec: input.spec,
+        quantity: input.quantity,
+      })
+      await fetch()
+    } catch {
+      // Error already shown by request interceptor
     }
   }
 
-  // Update item quantity
-  function updateQuantity(productId: string, spec: string, quantity: number) {
-    const item = items.value.find(i => i.productId === productId && i.spec === spec)
-    if (item) {
-      if (quantity < item.minOrderQty) {
-        uni.showToast({ title: `最低起订量${item.minOrderQty}件`, icon: 'none' })
-        return
-      }
-      if (quantity > item.stock) {
-        uni.showToast({ title: '库存不足', icon: 'none' })
-        item.quantity = item.stock
-      } else {
-        item.quantity = quantity
-      }
-      persist()
+  /** Update cart item quantity by cart item id. */
+  async function updateQuantity(id: string, quantity: number): Promise<void> {
+    try {
+      await updateCartItem(id, quantity)
+      await fetch()
+    } catch {
+      // Error already shown by request interceptor
     }
   }
 
-  // Toggle item checked
-  function toggleChecked(productId: string, spec: string) {
-    const item = items.value.find(i => i.productId === productId && i.spec === spec)
+  /** Remove item from cart by cart item id. */
+  async function removeItem(id: string): Promise<void> {
+    try {
+      await removeCartItem(id)
+      await fetch()
+    } catch {
+      // Error already shown by request interceptor
+    }
+  }
+
+  /** Clear entire cart. */
+  async function clearCartRemote(): Promise<void> {
+    try {
+      await clearCart()
+      items.value = []
+    } catch {
+      // Error already shown by request interceptor
+    }
+  }
+
+  // ── Local UI state (checked) ───────────────────────────────────────────────
+
+  /** Toggle checked state of a single cart item by cart item id. */
+  function toggleChecked(id: string) {
+    const item = items.value.find(i => i.id === id)
     if (item) {
       item.checked = !item.checked
-      persist()
     }
   }
 
-  // Toggle all checked
+  /** Toggle all items checked/unchecked. */
   function toggleAllChecked() {
     const newChecked = !isAllChecked.value
-    items.value.forEach(item => { item.checked = newChecked })
-    persist()
+    items.value.forEach(item => {
+      item.checked = newChecked
+    })
   }
 
-  // Clear checked items
-  function removeCheckedItems() {
-    items.value = items.value.filter(item => !item.checked)
-    persist()
-  }
-
-  // Clear all items
-  function clearCart() {
-    items.value = []
-    persist()
-  }
-
-  // Get items ready for checkout (only checked ones)
+  /** Get items that are checked (for checkout). */
   function getCheckoutItems(): CartItem[] {
     return items.value.filter(item => item.checked)
+  }
+
+  /** Remove all checked items (called after order submission). */
+  async function removeCheckedItems(): Promise<void> {
+    const checked = items.value.filter(item => item.checked)
+    if (checked.length === 0) return
+    try {
+      // Remove each checked item via API
+      await Promise.all(checked.map(item => removeCartItem(item.id)))
+      await fetch()
+    } catch {
+      // Error already shown by request interceptor
+    }
   }
 
   return {
     // State
     items,
     // Getters
-    totalCount, checkedItems, checkedCount, totalPrice, isAllChecked, isEmpty,
+    totalCount,
+    checkedItems,
+    checkedCount,
+    totalPrice,
+    isAllChecked,
+    isEmpty,
     // Actions
-    init, addItem, removeItem, updateQuantity, toggleChecked, toggleAllChecked,
-    removeCheckedItems, clearCart, getCheckoutItems
+    fetch,
+    addItem,
+    updateQuantity,
+    removeItem,
+    clearCart: clearCartRemote,
+    toggleChecked,
+    toggleAllChecked,
+    getCheckoutItems,
+    removeCheckedItems,
   }
 })

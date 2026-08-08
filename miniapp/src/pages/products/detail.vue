@@ -350,15 +350,14 @@ function increaseQty() {
 }
 
 // ── Cart actions ───────────────────────────────────────
-function addToCart() {
+async function addToCart() {
   if (!product.value) return
 
-  cartStore.addItem({
-    productId: product.value.id,
+  await cartStore.addItem({
+    productId: String(product.value.id),
     productName: product.value.name,
     productImage: product.value.images?.[0] || '',
     spec: getSelectedSpec(),
-    unitPrice: priceRange.value.min ?? 0,
     quantity: quantity.value,
     stock: product.value.stock ?? 0,
     minOrderQty: product.value.min_order_qty,
@@ -393,6 +392,8 @@ onLoad((options?: Record<string, string>) => {
   if (id) {
     productId.value = String(id)
     loadProduct(id)
+    // Fetch cart from backend for badge (no-op when not logged in)
+    cartStore.fetch()
   } else {
     errorMsg.value = '商品ID无效'
   }
