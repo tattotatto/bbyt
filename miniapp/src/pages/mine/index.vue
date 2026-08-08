@@ -18,10 +18,10 @@
           <text class="profile-level-text">{{ userStore.levelLabel }}</text>
         </view>
         <text
-          v-if="userStore.userInfo?.company_name"
+          v-if="userStore.userInfo?.retailer_profile?.company_name"
           class="profile-company"
         >
-          {{ userStore.userInfo.company_name }}
+          {{ userStore.userInfo.retailer_profile.company_name }}
         </text>
       </template>
 
@@ -168,25 +168,13 @@ appStore.init()
 const safeBottom = computed(() => Math.max(appStore.safeAreaBottom, 20))
 
 // ── Login ───────────────────────────────────────────────────────────────────
-function handleLogin() {
-  // Real implementation would use uni.login + wx.getUserProfile
-  // For now, use mock login flow
-  uni.showModal({
-    title: '登录',
-    content: '使用模拟账号登录？',
-    success: (res) => {
-      if (res.confirm) {
-        userStore.login({
-          code: 'mock_code_' + Date.now(),
-          userInfo: {
-            nickName: '小暖用户',
-            avatarUrl: ''
-          }
-        })
-        uni.showToast({ title: '登录成功', icon: 'success' })
-      }
-    }
-  })
+async function handleLogin() {
+  try {
+    await userStore.login()
+    uni.showToast({ title: '登录成功', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+  }
 }
 
 // ── Logout ──────────────────────────────────────────────────────────────────

@@ -1,54 +1,61 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-
-// Types (define them in this file)
-interface UserInfo {
-  id: number
-  nickname: string
-  avatar: string
-  phone: string
-  level: number        // 0=普通, 1=银卡, 2=金卡, 3=钻石
-  level_name: string
-  company_name?: string
-  created_at: string
-}
-
-interface LoginParams {
-  code: string
-  phone?: string
-  userInfo?: {
-    nickName: string
-    avatarUrl: string
-  }
-}
+import { wxLogin, getUserProfile } from '../api/auth'
+import type { UserProfile } from '../api/auth'
 
 const TOKEN_KEY = 'hxmall_token'
 const REFRESH_TOKEN_KEY = 'hxmall_refresh_token'
 const USER_INFO_KEY = 'hxmall_user_info'
 
+// Numeric level mapping for backward compatibility (detail.vue, checkout.vue, PriceTable.vue)
+const LEVEL_NUMBER_MAP: Record<string, number> = {
+  normal: 0,
+  silver: 1,
+  gold: 2,
+  platinum: 3,
+}
+
 export const useUserStore = defineStore('user', () => {
-  // State
+  // ── State ────────────────────────────────────────────────────────────────────
   const token = ref<string | null>(null)
   const refreshToken = ref<string | null>(null)
-  const userInfo = ref<UserInfo | null>(null)
+  const userInfo = ref<UserProfile | null>(null)
 
-  // Getters
+  // ── Getters ──────────────────────────────────────────────────────────────────
   const isLoggedIn = computed(() => !!token.value)
-  const userLevel = computed(() => userInfo.value?.level ?? 0)
-  const levelLabel = computed(() => {
-    const labels = ['普通会员', '银卡会员', '金卡会员', '钻石会员']
-    return labels[userLevel.value] || '普通会员'
+
+  /** Numeric level (0-3) for backward compatibility with PriceTable etc. */
+  const userLevel = computed(() => {
+    if (!userInfo.value?.level) return 0
+    return LEVEL_NUMBER_MAP[userInfo.value.level] ?? 0
   })
+
+  /** Chinese level label derived from backend level string */
+  const levelLabel = computed(() => {
+    const labels: Record<string, string> = {
+      normal: '普通会员',
+      silver: '银卡会员',
+      gold: '金卡会员',
+      platinum: '钻石会员',
+    }
+    return labels[userInfo.value?.level ?? ''] ?? '普通会员'
+  })
+
+  /** Discount rate derived from level (backward compat) */
   const discountRate = computed(() => {
     const rates = [1, 0.95, 0.9, 0.85]
     return rates[userLevel.value] || 1
   })
+
+  /** Display nickname with fallback */
   const nickname = computed(() => userInfo.value?.nickname || '未登录')
+
+  /** Display avatar with fallback */
   const avatar = computed(() => userInfo.value?.avatar || '/static/images/default-avatar.png')
 
-  // Actions
+  // ── Actions ──────────────────────────────────────────────────────────────────
 
-  // Initialize: restore state from storage
+  /** Initialize: restore state from storage */
   function init() {
     try {
       const savedToken = uni.getStorageSync(TOKEN_KEY)
@@ -64,40 +71,44 @@ export const useUserStore = defineStore('user', () => {
     } catch { /* ignore storage errors */ }
   }
 
-  // Login
-  async function login(params: LoginParams) {
-    // Call WeChat login API (placeholder - actual API call goes here)
-    // In real implementation: const res = await wxLogin(params)
-    // For now set mock data to demonstrate the store works
-    const mockResponse = {
-      access_token: 'mock_access_token_' + Date.now(),
-      refresh_token: 'mock_refresh_token_' + Date.now(),
-      expires_in: 7200,
-      user_info: {
-        id: 1,
-        nickname: params.userInfo?.nickName || '微信用户',
-        avatar: params.userInfo?.avatarUrl || '',
-        phone: params.phone || '',
-        level: 0,
-        level_name: '普通会员',
-        company_name: '',
-        created_at: new Date().toISOString()
-      }
-    }
+  /** Login via WeChat: uni.login → wxLogin API → store token + userInfo */
+  async function login(userInfoParam?: { nickName?: string; avatarUrl?: string }): Promise<void> {
+    // 1. Get WeChat login code
+    const code = await new Promise<string>((resolve, reject) => {
+      uni.login({
+        success: (res: any) => {
+          if (res.code) {
+            resolve(res.code)
+          } else {
+            reject(new Error(res.errMsg || 'uni.login failed'))
+          }
+        },
+        fail: (err: any) => reject(new Error(err.errMsg || 'uni.login failed')),
+      })
+    })
 
-    token.value = mockResponse.access_token
-    refreshToken.value = mockResponse.refresh_token
-    userInfo.value = mockResponse.user_info
+    // 2. Call backend wxLogin
+    const res = await wxLogin({
+      code,
+      user_info: userInfoParam,
+    })
 
-    // Persist
+    const { access_token, refresh_token, user_info } = res.data
+
+    // 3. Store tokens and user info
+    token.value = access_token
+    refreshToken.value = refresh_token
+    userInfo.value = user_info
+
+    // 4. Persist
     try {
-      uni.setStorageSync(TOKEN_KEY, mockResponse.access_token)
-      uni.setStorageSync(REFRESH_TOKEN_KEY, mockResponse.refresh_token)
-      uni.setStorageSync(USER_INFO_KEY, JSON.stringify(mockResponse.user_info))
+      uni.setStorageSync(TOKEN_KEY, access_token)
+      uni.setStorageSync(REFRESH_TOKEN_KEY, refresh_token)
+      uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user_info))
     } catch { /* ignore */ }
   }
 
-  // Logout
+  /** Logout: clear state + storage, redirect to home */
   function logout() {
     token.value = null
     refreshToken.value = null
@@ -107,11 +118,10 @@ export const useUserStore = defineStore('user', () => {
       uni.removeStorageSync(REFRESH_TOKEN_KEY)
       uni.removeStorageSync(USER_INFO_KEY)
     } catch { /* ignore */ }
-    // Redirect to home
     uni.switchTab({ url: '/pages/home/index' })
   }
 
-  // Update token
+  /** Update token (called by request interceptor on token refresh) */
   function updateToken(accessToken: string, refresh_token?: string) {
     token.value = accessToken
     if (refresh_token) refreshToken.value = refresh_token
@@ -121,20 +131,17 @@ export const useUserStore = defineStore('user', () => {
     } catch { /* ignore */ }
   }
 
-  // Fetch user info from server
-  async function fetchUserInfo() {
-    // Placeholder: const res = await getUserProfile()
-    // For now, keep existing user info
-    if (!userInfo.value && token.value) {
-      try {
-        const saved = uni.getStorageSync(USER_INFO_KEY)
-        if (saved) userInfo.value = JSON.parse(saved)
-      } catch { /* ignore */ }
-    }
+  /** Fetch user profile from /users/me */
+  async function fetchUserInfo(): Promise<void> {
+    const res = await getUserProfile()
+    userInfo.value = res.data
+    try {
+      uni.setStorageSync(USER_INFO_KEY, JSON.stringify(res.data))
+    } catch { /* ignore */ }
   }
 
-  // Update user info locally
-  function updateUserInfo(info: Partial<UserInfo>) {
+  /** Update user info locally */
+  function updateUserInfo(info: Partial<UserProfile>) {
     if (userInfo.value) {
       userInfo.value = { ...userInfo.value, ...info }
       try {
@@ -149,6 +156,6 @@ export const useUserStore = defineStore('user', () => {
     // Getters
     isLoggedIn, userLevel, levelLabel, discountRate, nickname, avatar,
     // Actions
-    init, login, logout, updateToken, fetchUserInfo, updateUserInfo
+    init, login, logout, updateToken, fetchUserInfo, updateUserInfo,
   }
 })
