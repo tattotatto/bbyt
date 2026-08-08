@@ -155,6 +155,26 @@ describe('cart store backend sync', () => {
     expect(checkout[0].productId).toBe('p1')
   })
 
+  it('fetch() preserves unchecked state across refreshes', async () => {
+    const user = useUserStore()
+    user.updateToken('at')
+    const mGet = cartApi.getCart as unknown as ReturnType<typeof vi.fn>
+    // First fetch: two items
+    mGet.mockResolvedValue({ data: [BACKEND_CART_ITEM, { ...BACKEND_CART_ITEM, id: 'c2', product_id: 'p2', name: '浮板' }] })
+    const store = useCartStore()
+    await store.fetch()
+    // Uncheck one item
+    store.items[1].checked = false
+    expect(store.items[1].checked).toBe(false)
+    // Second fetch: backend returns same two items
+    mGet.mockResolvedValue({ data: [BACKEND_CART_ITEM, { ...BACKEND_CART_ITEM, id: 'c2', product_id: 'p2', name: '浮板' }] })
+    await store.fetch()
+    // The unchecked item should still be unchecked
+    const unchecked = store.items.filter(i => !i.checked)
+    expect(unchecked).toHaveLength(1)
+    expect(unchecked[0].id).toBe('c2')
+  })
+
   it('removeCheckedItems calls removeCartItem for each checked item', async () => {
     const user = useUserStore()
     user.updateToken('at')

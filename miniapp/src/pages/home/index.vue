@@ -214,7 +214,6 @@ import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { useCartStore } from '../../stores/cart'
-import { useUserStore } from '../../stores/user'
 import { useAppStore } from '../../stores/app'
 import {
   getCategories,
@@ -228,7 +227,6 @@ import type { DesignCase } from '../../api/cases'
 import { PAGE_SIZE } from '../../utils/constants'
 
 const cartStore = useCartStore()
-const userStore = useUserStore()
 const appStore = useAppStore()
 
 // ── Init app store ──────────────────────────────────────────────────────────

@@ -64,7 +64,8 @@ export const useCartStore = defineStore('cart', () => {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  /** Fetch cart from backend. If not logged in, clears items. */
+  /** Fetch cart from backend. If not logged in, clears items.
+   *  Preserves locally-unchecked state for items that still exist after fetch. */
   async function fetch(): Promise<void> {
     const user = useUserStore()
     if (!user.isLoggedIn) {
@@ -73,7 +74,17 @@ export const useCartStore = defineStore('cart', () => {
     }
     try {
       const res = await getCart()
+      // Record currently-unchecked item IDs so we can restore after rebuild
+      const uncheckedIds = new Set(
+        items.value.filter(i => !i.checked).map(i => i.id),
+      )
       items.value = (res.data || []).map(mapCartItem)
+      // Restore unchecked state for items that still exist in the new list
+      for (const item of items.value) {
+        if (uncheckedIds.has(item.id)) {
+          item.checked = false
+        }
+      }
     } catch {
       // Silently keep current items on error
     }
