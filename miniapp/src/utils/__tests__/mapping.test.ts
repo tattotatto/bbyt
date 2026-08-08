@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { orderStatusLabel, orderStatusColor, formatCents, parsePriceRange } from '../mapping'
+import { orderStatusLabel, orderStatusColor, orderStatusBg, formatCents, parsePriceRange } from '../mapping'
 import { buildOrderItems } from '../index'
 
 describe('orderStatusLabel', () => {
@@ -19,6 +19,19 @@ describe('orderStatusColor', () => {
   it('returns color for known status and fallback otherwise', () => {
     expect(orderStatusColor('pending_payment')).toBe('#FF7B7B')
     expect(orderStatusColor('nope')).toBe('#7a6a5a')
+  })
+})
+
+describe('orderStatusBg', () => {
+  it('returns bg color for known status and fallback otherwise', () => {
+    expect(orderStatusBg('pending_payment')).toBe('#FFF0F0')
+    expect(orderStatusBg('paid')).toBe('#FFF8F0')
+    expect(orderStatusBg('shipped')).toBe('#F0F8FB')
+    expect(orderStatusBg('confirmed')).toBe('#F2FAF5')
+    expect(orderStatusBg('completed')).toBe('#F2FAF5')
+    expect(orderStatusBg('cancelled')).toBe('#F5F5F5')
+    expect(orderStatusBg('refunding')).toBe('#FFF0F0')
+    expect(orderStatusBg('unknown_status')).toBe('#F5F5F5')
   })
 })
 

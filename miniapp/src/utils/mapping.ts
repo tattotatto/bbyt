@@ -33,6 +33,26 @@ export function orderStatusColor(status: string): string {
   return STATUS_MAP[status]?.color ?? FALLBACK_STATUS.color
 }
 
+const STATUS_BG_MAP: Record<string, string> = {
+  pending_payment: '#FFF0F0',
+  paid:             '#FFF8F0',
+  shipped:          '#F0F8FB',
+  confirmed:        '#F2FAF5',
+  completed:        '#F2FAF5',
+  cancelled:        '#F5F5F5',
+  refunding:        '#FFF0F0',
+}
+
+const FALLBACK_BG = '#F5F5F5'
+
+/**
+ * Map a backend string status to its display background color (hex).
+ * Falls back to "#F5F5F5" for unknown statuses.
+ */
+export function orderStatusBg(status: string): string {
+  return STATUS_BG_MAP[status] ?? FALLBACK_BG
+}
+
 // ── Price Utilities ──────────────────────────────────
 
 /**

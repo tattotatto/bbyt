@@ -27,7 +27,7 @@
     <!-- 4. Order Detail Content -->
     <template v-else>
       <!-- Status Header Banner -->
-      <view class="status-header" :style="{ background: statusBg(order.status) }">
+      <view class="status-header" :style="{ background: orderStatusBg(order.status) }">
         <text class="status-icon">{{ statusIcon }}</text>
         <text class="status-text" :style="{ color: orderStatusColor(order.status) }">
           {{ orderStatusLabel(order.status) }}
@@ -119,8 +119,8 @@
           <view class="timeline-dot" />
           <view v-if="idx < order.timeline.length - 1" class="timeline-line" />
           <view class="timeline-content">
-            <text class="timeline-text">{{ (entry as any).description || (entry as any).event || '' }}</text>
-            <text class="timeline-time">{{ (entry as any).time ? formatDate((entry as any).time) : '' }}</text>
+            <text class="timeline-text">{{ entry.description || entry.event || '' }}</text>
+            <text class="timeline-time">{{ entry.time ? formatDate(entry.time) : '' }}</text>
           </view>
         </view>
       </view>
@@ -178,26 +178,12 @@ import EmptyState from '../../components/EmptyState.vue'
 import { getOrderDetail, cancelOrder, confirmReceipt, requestRefund } from '../../api/orders'
 import type { Order } from '../../api/orders'
 import { formatPrice, formatDate, maskPhone, showSuccess, showError, showLoading, hideLoading } from '../../utils/index'
-import { orderStatusLabel, orderStatusColor, formatCents } from '../../utils/mapping'
+import { orderStatusLabel, orderStatusColor, orderStatusBg, formatCents } from '../../utils/mapping'
 
 // ── State ─────────────────────────────────────
 const order = ref<Order | null>(null)
 const loading = ref<boolean>(true)
 const errorMsg = ref<string>('')
-
-// ── Status Helpers ────────────────────────────
-function statusBg(status: string): string {
-  const map: Record<string, string> = {
-    pending_payment: '#FFF0F0',
-    paid: '#FFF8F0',
-    shipped: '#F0F8FB',
-    confirmed: '#F2FAF5',
-    completed: '#F2FAF5',
-    cancelled: '#F5F5F5',
-    refunding: '#FFF0F0',
-  }
-  return map[status] || '#F5F5F5'
-}
 
 function getPlaceholderClass(id: string | number): string {
   const classes = ['img-ph--0', 'img-ph--1', 'img-ph--2', 'img-ph--3']

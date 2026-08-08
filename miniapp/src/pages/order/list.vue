@@ -57,7 +57,7 @@
           <text class="order-number">{{ order.order_no }}</text>
           <text
             class="order-status"
-            :style="{ color: orderStatusColor(order.status), background: statusBg(order.status) }"
+            :style="{ color: orderStatusColor(order.status), background: orderStatusBg(order.status) }"
           >{{ orderStatusLabel(order.status) }}</text>
         </view>
 
@@ -146,7 +146,7 @@ import { getOrderList, cancelOrder, confirmReceipt, requestRefund } from '../../
 import type { Order } from '../../api/orders'
 import { formatPrice, showSuccess, showError, showLoading, hideLoading } from '../../utils/index'
 import { PAGE_SIZE } from '../../utils/constants'
-import { orderStatusLabel, orderStatusColor, formatCents } from '../../utils/mapping'
+import { orderStatusLabel, orderStatusColor, orderStatusBg, formatCents } from '../../utils/mapping'
 
 // ── Tabs ──────────────────────────────────────
 interface TabItem {
@@ -173,20 +173,6 @@ const errorMsg = ref<string>('')
 const page = ref<number>(1)
 const hasMore = ref<boolean>(true)
 const total = ref<number>(0)
-
-// ── Status Helpers ────────────────────────────
-function statusBg(status: string): string {
-  const map: Record<string, string> = {
-    pending_payment: '#FFF0F0',
-    paid: '#FFF8F0',
-    shipped: '#F0F8FB',
-    confirmed: '#F2FAF5',
-    completed: '#F2FAF5',
-    cancelled: '#F5F5F5',
-    refunding: '#FFF0F0',
-  }
-  return map[status] || '#F5F5F5'
-}
 
 function getPlaceholderClass(id: string | number): string {
   const classes = ['img-ph--0', 'img-ph--1', 'img-ph--2', 'img-ph--3']
