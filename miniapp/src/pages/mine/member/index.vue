@@ -24,21 +24,21 @@
     <!-- ================================================================ -->
     <!--  STATE: NOT LOGGED IN -->
     <!-- ================================================================ -->
-    <template v-else-if="!userStore.isLoggedIn">
+    <template v-else-if="pageState === 'notLoggedIn'">
       <EmptyState
         icon="🔐"
         title="请先登录"
         description="登录后即可查看会员权益与账期额度"
         :showButton="true"
         buttonText="去登录"
-        @buttonClick="goToLogin"
+        @buttonClick="goToMine"
       />
     </template>
 
     <!-- ================================================================ -->
     <!--  STATE: CONTENT — Member Center -->
     <!-- ================================================================ -->
-    <template v-else>
+    <template v-else-if="pageState === 'content'">
       <!-- ── Level Header Card ─────────────────────────────────────────── -->
       <view
         class="level-card"
@@ -164,7 +164,7 @@ import { formatCents, levelDiscountLabel, levelColor } from '../../../utils/mapp
 const userStore = useUserStore()
 
 // ── Page State ──────────────────────────────────────────────────────────────
-type PageState = 'loading' | 'error' | 'content'
+type PageState = 'loading' | 'error' | 'notLoggedIn' | 'content'
 const pageState = ref<PageState>('loading')
 
 // ── Profile Data ────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ const safeBottom = computed(() => {
 // ── Data Loading ───────────────────────────────────────────────────────────
 async function loadData(): Promise<void> {
   if (!userStore.isLoggedIn) {
-    pageState.value = 'content'
+    pageState.value = 'notLoggedIn'
     return
   }
   pageState.value = 'loading'
@@ -209,7 +209,11 @@ async function loadData(): Promise<void> {
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
-function goToLogin(): void {
+/**
+ * Navigate to the "Mine" tab, which serves as the project's login entry point.
+ * The mine page header presents the login UI when the user is not authenticated.
+ */
+function goToMine(): void {
   uni.switchTab({ url: '/pages/mine/index' })
 }
 
