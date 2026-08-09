@@ -8,13 +8,21 @@ export interface UserProfile {
   retailer_profile?: { company_name: string | null; business_license: string | null; contact_person: string | null } | null
 }
 
+/** Body for PUT /users/me/profile — retailer profile partial update */
+export interface RetailerProfileUpdate {
+  company_name?: string
+  business_license?: string
+  contact_person?: string
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
 export const wxLogin = (params: { code: string; user_info?: { nickName?: string; avatarUrl?: string } }) =>
   http.post<{ access_token: string; refresh_token: string; user_info: UserProfile }>('/auth/wx-login', params)
 
 export const getUserProfile = () => http.get<UserProfile>('/users/me')
 
-export const updateUserProfile = (data: Partial<UserProfile>) => http.put<UserProfile>('/users/me', data)
+export const updateUserProfile = (data: RetailerProfileUpdate) =>
+  http.put<UserProfile>('/users/me/profile', data)
 
 export const logout = () => http.post('/auth/logout')
 

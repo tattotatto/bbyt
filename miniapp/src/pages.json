@@ -94,6 +94,14 @@
         "navigationBarBackgroundColor": "#FF7B7B",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/mine/company/index",
+      "style": {
+        "navigationBarTitleText": "企业信息",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {
