@@ -81,3 +81,39 @@ export function parsePriceRange(
   }
   return { min: Math.min(...allPrices), max: Math.max(...allPrices) }
 }
+
+// ── Level / Membership Utilities ───────────────────
+
+const DISCOUNT_LABEL_MAP: Record<string, string> = {
+  normal: '无折扣',
+  silver: '95折',
+  gold: '9折',
+  platinum: '85折',
+}
+
+const FALLBACK_DISCOUNT_LABEL = '无折扣'
+
+/**
+ * Map a membership level string to a Chinese discount description.
+ * @example levelDiscountLabel('gold') => '9折'
+ */
+export function levelDiscountLabel(level: string): string {
+  return DISCOUNT_LABEL_MAP[level] ?? FALLBACK_DISCOUNT_LABEL
+}
+
+const LEVEL_COLOR_MAP: Record<string, string> = {
+  normal: '#7a6a5a',
+  silver: '#A8A8A8',
+  gold: '#D4A853',
+  platinum: '#7EC8E3',
+}
+
+const FALLBACK_LEVEL_COLOR = '#7a6a5a'
+
+/**
+ * Map a membership level string to its display color.
+ * @example levelColor('gold') => '#D4A853'
+ */
+export function levelColor(level: string): string {
+  return LEVEL_COLOR_MAP[level] ?? FALLBACK_LEVEL_COLOR
+}

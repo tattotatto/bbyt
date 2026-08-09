@@ -110,6 +110,14 @@
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/member/index",
+      "style": {
+        "navigationBarTitleText": "会员中心",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {

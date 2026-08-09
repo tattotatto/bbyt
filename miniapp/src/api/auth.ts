@@ -5,7 +5,13 @@ import http from './request'
 export interface UserProfile {
   id: string; phone: string; role: string; level: string; status: string;
   nickname?: string | null; avatar?: string | null; credit_limit?: number; credit_balance?: number;
-  retailer_profile?: { company_name: string | null; business_license: string | null; contact_person: string | null } | null
+  retailer_profile?: {
+    company_name: string | null
+    business_license: string | null
+    contact_person: string | null
+    purchase_history_summary?: string | null
+    preferred_categories?: string[] | null
+  } | null
 }
 
 /** Body for PUT /users/me/profile — retailer profile partial update */

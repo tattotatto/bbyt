@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { orderStatusLabel, orderStatusColor, orderStatusBg, formatCents, parsePriceRange } from '../mapping'
+import { orderStatusLabel, orderStatusColor, orderStatusBg, formatCents, parsePriceRange, levelDiscountLabel, levelColor } from '../mapping'
 import { buildOrderItems } from '../index'
 
 describe('orderStatusLabel', () => {
@@ -91,5 +91,29 @@ describe('buildOrderItems', () => {
   })
   it('returns empty array for empty input', () => {
     expect(buildOrderItems([])).toEqual([])
+  })
+})
+
+describe('levelDiscountLabel', () => {
+  it('maps level string to discount description', () => {
+    expect(levelDiscountLabel('normal')).toBe('无折扣')
+    expect(levelDiscountLabel('silver')).toBe('95折')
+    expect(levelDiscountLabel('gold')).toBe('9折')
+    expect(levelDiscountLabel('platinum')).toBe('85折')
+  })
+  it('falls back for unknown level', () => {
+    expect(levelDiscountLabel('unknown')).toBe('无折扣')
+  })
+})
+
+describe('levelColor', () => {
+  it('maps level string to theme color', () => {
+    expect(levelColor('normal')).toBe('#7a6a5a')
+    expect(levelColor('silver')).toBe('#A8A8A8')
+    expect(levelColor('gold')).toBe('#D4A853')
+    expect(levelColor('platinum')).toBe('#7EC8E3')
+  })
+  it('falls back for unknown level', () => {
+    expect(levelColor('unknown')).toBe('#7a6a5a')
   })
 })
