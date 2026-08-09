@@ -94,10 +94,11 @@
           <!-- Product Image -->
           <view class="cart-item__img-wrap">
             <image
-              v-if="item.productImage"
+              v-if="item.productImage && !imageErrors[item.id]"
               class="cart-item__image"
               :src="item.productImage"
               mode="aspectFill"
+              @error="onImageError(item.id)"
             />
             <view v-else class="cart-item__image-fallback">
               <text class="cart-item__image-emoji">📦</text>
@@ -114,7 +115,7 @@
               <view class="cart-stepper">
                 <view
                   class="cart-stepper__btn"
-                  :class="{ 'cart-stepper__btn--disabled': item.quantity <= item.minOrderQty }"
+                  :class="{ 'cart-stepper__btn--disabled': item.quantity <= item.minOrderQty || isItemLoading(item.id) }"
                   @tap="onDecrease(item)"
                 >
                   <text class="cart-stepper__btn-text">−</text>
@@ -122,7 +123,7 @@
                 <text class="cart-stepper__value">{{ item.quantity }}</text>
                 <view
                   class="cart-stepper__btn"
-                  :class="{ 'cart-stepper__btn--disabled': item.quantity >= item.stock }"
+                  :class="{ 'cart-stepper__btn--disabled': item.quantity >= item.stock || isItemLoading(item.id) }"
                   @tap="onIncrease(item)"
                 >
                   <text class="cart-stepper__btn-text">+</text>
@@ -132,7 +133,11 @@
           </view>
 
           <!-- Delete -->
-          <view class="cart-item__delete" @tap="onRemoveItem(item)">
+          <view
+            class="cart-item__delete"
+            :class="{ 'cart-item__delete--disabled': isItemLoading(item.id) }"
+            @tap="onRemoveItem(item)"
+          >
             <text class="cart-item__delete-icon">🗑</text>
           </view>
         </view>
@@ -160,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -195,15 +200,36 @@ const pageState = ref<PageState>('loading')
 // ── Layout ──────────────────────────────────────────────────────────────────
 const safeBottom = computed(() => Math.max(appStore.safeAreaBottom, 20))
 
-// Fixed elements height (select-all bar + bottom bar ≈ 160rpx + safeBottom)
+// Cache pixel ratio once (based on 750rpx design width)
+const CACHED_PIXEL_RATIO = (() => {
+  try {
+    const info = uni.getSystemInfoSync()
+    return 750 / (info.screenWidth || 375)
+  } catch {
+    return 2
+  }
+})()
+
+// Fixed elements height (select-all bar + bottom bar ≈ 200rpx)
 const FIXED_HEIGHT_RPX = 200
 const scrollHeight = computed(() => {
   const windowHeight = appStore.windowHeight || 667
-  const systemInfo = uni.getSystemInfoSync()
-  const pixelRatio = 750 / (systemInfo.screenWidth || 375)
-  const fixedPx = FIXED_HEIGHT_RPX / pixelRatio
+  const fixedPx = FIXED_HEIGHT_RPX / CACHED_PIXEL_RATIO
   return windowHeight - fixedPx
 })
+
+// ── Image Error Fallback ─────────────────────────────────────────────────────
+const imageErrors = reactive<Record<string, boolean>>({})
+function onImageError(id: string): void {
+  imageErrors[id] = true
+}
+
+// ── Operation Loading State (prevent double-click races) ────────────────────
+const loadingItemIds = ref<Record<string, boolean>>({})
+
+function isItemLoading(id: string): boolean {
+  return !!loadingItemIds.value[id]
+}
 
 // ── Data Loading ────────────────────────────────────────────────────────────
 async function loadCart(): Promise<void> {
@@ -225,20 +251,35 @@ async function retryLoad(): Promise<void> {
 }
 
 // ── Quantity Stepper ────────────────────────────────────────────────────────
-function onDecrease(item: CartItem): void {
-  if (item.quantity <= item.minOrderQty) return
+async function onDecrease(item: CartItem): Promise<void> {
+  if (item.quantity <= item.minOrderQty || isItemLoading(item.id)) return
   const newQty = item.quantity - 1
-  cartStore.updateQuantity(item.id, newQty)
+  loadingItemIds.value = { ...loadingItemIds.value, [item.id]: true }
+  try {
+    await cartStore.updateQuantity(item.id, newQty)
+  } finally {
+    const next = { ...loadingItemIds.value }
+    delete next[item.id]
+    loadingItemIds.value = next
+  }
 }
 
-function onIncrease(item: CartItem): void {
-  if (item.quantity >= item.stock) return
+async function onIncrease(item: CartItem): Promise<void> {
+  if (item.quantity >= item.stock || isItemLoading(item.id)) return
   const newQty = item.quantity + 1
-  cartStore.updateQuantity(item.id, newQty)
+  loadingItemIds.value = { ...loadingItemIds.value, [item.id]: true }
+  try {
+    await cartStore.updateQuantity(item.id, newQty)
+  } finally {
+    const next = { ...loadingItemIds.value }
+    delete next[item.id]
+    loadingItemIds.value = next
+  }
 }
 
 // ── Remove Item ─────────────────────────────────────────────────────────────
 function onRemoveItem(item: CartItem): void {
+  if (isItemLoading(item.id)) return
   uni.showModal({
     title: '确认删除',
     content: `确定要删除「${item.productName}」吗？`,
@@ -246,7 +287,12 @@ function onRemoveItem(item: CartItem): void {
     confirmColor: '#FF7B7B',
     success: (res) => {
       if (res.confirm) {
-        cartStore.removeItem(item.id)
+        loadingItemIds.value = { ...loadingItemIds.value, [item.id]: true }
+        cartStore.removeItem(item.id).finally(() => {
+          const next = { ...loadingItemIds.value }
+          delete next[item.id]
+          loadingItemIds.value = next
+        })
       }
     },
   })
@@ -484,6 +530,12 @@ onShow(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cart-item__delete--disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .cart-item__delete-icon {
