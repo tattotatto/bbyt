@@ -176,11 +176,6 @@ async function loadFavorites(reset: boolean = true): Promise<void> {
     hasMore.value = null
   }
 
-  if (!userStore.isLoggedIn) {
-    pageState.value = 'content'
-    return
-  }
-
   try {
     const res = await getFavorites({ page: currentPage.value, page_size: pageSize })
     const data = res.data
@@ -207,10 +202,15 @@ async function loadFavorites(reset: boolean = true): Promise<void> {
 }
 
 async function retryLoad(): Promise<void> {
+  if (!userStore.isLoggedIn) {
+    pageState.value = 'content'
+    return
+  }
   await loadFavorites(true)
 }
 
 async function onLoadMore(): Promise<void> {
+  if (!userStore.isLoggedIn) return
   if (loadingMore.value) return
   if (hasMore.value === false) return
 
@@ -258,6 +258,10 @@ function goToProducts(): void {
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 onShow(() => {
+  if (!userStore.isLoggedIn) {
+    pageState.value = 'content'
+    return
+  }
   loadFavorites(true)
 })
 </script>
