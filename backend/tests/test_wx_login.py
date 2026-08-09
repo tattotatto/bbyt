@@ -141,3 +141,14 @@ async def test_wx_login_real_wechat_same_openid_same_user(client, db_session, mo
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.json()["data"]["user_info"]["id"] == r2.json()["data"]["user_info"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_pending_review_user_can_refresh(client, db_session):
+    """PENDING_REVIEW 用户应能正常刷新 token（不被强制 401）"""
+    # dev 登录建 pending_review 用户拿 refresh_token
+    login = await client.post("/api/v1/auth/wx-login", json={"code": "dev_refresh"})
+    rt = login.json()["data"]["refresh_token"]
+    res = await client.post("/api/v1/auth/refresh", json={"refresh_token": rt})
+    assert res.status_code == 200
+    assert res.json()["data"]["access_token"]

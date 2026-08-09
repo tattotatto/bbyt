@@ -89,7 +89,7 @@ async def refresh_token(req: RefreshRequest, db: AsyncSession = Depends(get_db))
     # Verify user still exists and is active
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    if not user or user.status != UserStatus.ACTIVE:
+    if not user or user.status == UserStatus.FROZEN:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已被禁用")
 
     access_token = create_access_token(user.id, user.role.value)

@@ -46,7 +46,12 @@ function clearTokens(): void {
 
 // Is currently refreshing token (to prevent multiple simultaneous refresh)
 let isRefreshing = false
-let refreshQueue: Array<(token: string) => void> = []
+interface QueueItem {
+  resolve: (value: any) => void
+  reject: (reason: any) => void
+  executeWithToken: (token: string) => Promise<void>
+}
+let refreshQueue: QueueItem[] = []
 
 // Core request function
 async function request<T = any>(options: RequestOptions): Promise<ResponseData<T>> {
@@ -87,8 +92,8 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
 
     const response = res.data as ResponseData<T>
 
-    // Handle token expired (code === 401 or specific error code)
-    if (response.code === 401 || response.code === 10001) {
+    // Handle token expired (HTTP 401 or specific error code)
+    if (res.statusCode === 401 || response.code === 401 || response.code === 10001) {
       // Token expired, try to refresh
       if (!isRefreshing) {
         isRefreshing = true
@@ -96,7 +101,7 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
           const newToken = await refreshAccessToken()
           isRefreshing = false
           // Resolve queued requests
-          refreshQueue.forEach(cb => cb(newToken))
+          refreshQueue.forEach(item => item.executeWithToken(newToken))
           refreshQueue = []
           // Retry original request with new token
           headers['Authorization'] = `Bearer ${newToken}`
@@ -112,6 +117,8 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
           return retryRes.data as ResponseData<T>
         } catch (refreshError) {
           isRefreshing = false
+          // Reject all queued pending promises so they don't hang
+          refreshQueue.forEach(item => item.reject(refreshError))
           refreshQueue = []
           clearTokens()
           // Redirect to login
@@ -121,18 +128,22 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
       } else {
         // Queue this request until token is refreshed
         return new Promise((resolve, reject) => {
-          refreshQueue.push(async (newToken: string) => {
-            headers['Authorization'] = `Bearer ${newToken}`
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const [qError, qRes] = await uni.request({
-              url: BASE_URL + url,
-              method,
-              data,
-              header: headers,
-              timeout: 30000
-            }) as any
-            if (qError) reject(qError)
-            else resolve(qRes.data as ResponseData<T>)
+          refreshQueue.push({
+            resolve,
+            reject,
+            executeWithToken: async (newToken: string) => {
+              headers['Authorization'] = `Bearer ${newToken}`
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const [qError, qRes] = await uni.request({
+                url: BASE_URL + url,
+                method,
+                data,
+                header: headers,
+                timeout: 30000
+              }) as any
+              if (qError) reject(qError)
+              else resolve(qRes.data as ResponseData<T>)
+            }
           })
         })
       }
