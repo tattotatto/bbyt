@@ -142,6 +142,30 @@
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/contact/index",
+      "style": {
+        "navigationBarTitleText": "联系客服",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/mine/settings/index",
+      "style": {
+        "navigationBarTitleText": "设置",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/mine/help/index",
+      "style": {
+        "navigationBarTitleText": "帮助中心",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {
