@@ -102,6 +102,14 @@
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/address/index",
+      "style": {
+        "navigationBarTitleText": "收货地址",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {
