@@ -85,8 +85,11 @@
           <!-- Checkbox -->
           <view
             class="cart-checkbox"
-            :class="{ 'cart-checkbox--checked': item.checked }"
-            @tap="cartStore.toggleChecked(item.id)"
+            :class="{
+              'cart-checkbox--checked': item.checked,
+              'cart-checkbox--disabled': isItemLoading(item.id),
+            }"
+            @tap="onToggleChecked(item.id)"
           >
             <text v-if="item.checked" class="cart-checkbox__icon">✓</text>
           </view>
@@ -165,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -229,6 +232,17 @@ const loadingItemIds = ref<Record<string, boolean>>({})
 
 function isItemLoading(id: string): boolean {
   return !!loadingItemIds.value[id]
+}
+
+// ── Checkbox Toggle (sync but gate + nextTick prevents rapid re-clicks) ─────
+async function onToggleChecked(id: string): Promise<void> {
+  if (isItemLoading(id)) return
+  loadingItemIds.value = { ...loadingItemIds.value, [id]: true }
+  cartStore.toggleChecked(id)
+  await nextTick()
+  const next = { ...loadingItemIds.value }
+  delete next[id]
+  loadingItemIds.value = next
 }
 
 // ── Data Loading ────────────────────────────────────────────────────────────
@@ -375,6 +389,11 @@ onShow(() => {
 .cart-checkbox--checked {
   background: #FF7B7B;
   border-color: #FF7B7B;
+}
+
+.cart-checkbox--disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .cart-checkbox__icon {
