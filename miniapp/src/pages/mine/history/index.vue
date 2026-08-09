@@ -183,14 +183,20 @@ async function loadHistory(reset: boolean = true): Promise<void> {
     hasMore.value = null
   }
 
+  // For load-more, compute the next page before the request so that on failure
+  // currentPage is never left in a permanently-skipped state.
+  const requestPage = reset ? currentPage.value : currentPage.value + 1
+
   try {
-    const res = await getHistory({ page: currentPage.value, page_size: pageSize })
+    const res = await getHistory({ page: requestPage, page_size: pageSize })
     const data = res.data
 
     if (reset) {
       historyItems.value = data.items
     } else {
       historyItems.value = [...historyItems.value, ...data.items]
+      // Only commit the page increment on success — prevents permanent skip on failure.
+      currentPage.value = requestPage
     }
 
     totalCount.value = data.total
@@ -200,7 +206,7 @@ async function loadHistory(reset: boolean = true): Promise<void> {
     if (reset) {
       pageState.value = 'error'
     } else {
-      // Load-more failure: silently keep previous data
+      // Load-more failure: silently keep previous data; currentPage unchanged.
       uni.showToast({ title: '加载失败，请重试', icon: 'none', duration: 2000 })
     }
   } finally {
@@ -222,7 +228,8 @@ async function onLoadMore(): Promise<void> {
   if (hasMore.value === false) return
 
   loadingMore.value = true
-  currentPage.value += 1
+  // currentPage increment moved into loadHistory(false) success path
+  // to prevent permanent page-skip on API failure.
   await loadHistory(false)
 }
 
