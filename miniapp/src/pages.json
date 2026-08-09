@@ -126,6 +126,14 @@
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/history/index",
+      "style": {
+        "navigationBarTitleText": "浏览记录",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {
