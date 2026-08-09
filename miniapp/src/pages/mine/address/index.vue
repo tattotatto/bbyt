@@ -246,12 +246,12 @@ import {
 import type { Address } from '../../../api/address'
 import {
   maskPhone,
-  isValidPhone,
   showSuccess,
   showError,
   showLoading,
   hideLoading,
 } from '../../../utils'
+import { validateAddressForm, buildAddressPayload } from '../../../utils/address'
 
 const userStore = useUserStore()
 
@@ -319,14 +319,7 @@ const scrollHeight = computed(() => {
 
 // ── Form Validation ─────────────────────────────────────────────────────────────
 const canSave = computed(() => {
-  return (
-    !!form.name?.trim() &&
-    !!form.phone?.trim() &&
-    !!form.province?.trim() &&
-    !!form.city?.trim() &&
-    !!form.district?.trim() &&
-    !!form.detail?.trim()
-  )
+  return validateAddressForm(form).ok
 })
 
 // ── Data Loading ────────────────────────────────────────────────────────────────
@@ -380,27 +373,20 @@ function onToggleDefault(e: any): void {
 
 // ── Save ────────────────────────────────────────────────────────────────────────
 async function handleSave(): Promise<void> {
-  if (!canSave.value || saving.value) return
+  if (saving.value) return
 
-  // Validate phone
-  const phone = (form.phone ?? '').trim()
-  if (!isValidPhone(phone)) {
-    showError('请输入正确的11位手机号码')
+  // Full validation (required fields + phone format)
+  const validation = validateAddressForm(form)
+  if (!validation.ok) {
+    const firstError = Object.values(validation.errors)[0]
+    if (firstError) showError(firstError)
     return
   }
 
   saving.value = true
   showLoading('保存中...')
 
-  const payload: Partial<Address> = {
-    name: (form.name ?? '').trim(),
-    phone,
-    province: (form.province ?? '').trim(),
-    city: (form.city ?? '').trim(),
-    district: (form.district ?? '').trim(),
-    detail: (form.detail ?? '').trim(),
-    is_default: form.is_default ?? false,
-  }
+  const payload = buildAddressPayload(form)
 
   try {
     if (editingId.value) {
