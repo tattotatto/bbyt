@@ -134,6 +134,14 @@
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/mine/coupons/index",
+      "style": {
+        "navigationBarTitleText": "优惠券",
+        "navigationBarBackgroundColor": "#FFF8F0",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "tabBar": {
