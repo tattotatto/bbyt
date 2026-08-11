@@ -140,10 +140,18 @@
 </section>
 
 <section class="step" id="step1">
-  <h2><span class="num">1</span> 本机构建</h2>
-  <pre><code>cd admin && npm install &amp;&amp; npm run build          <span class="c"># base 已是 /admin/</span>
+  <h2><span class="num">1</span> 获取代码 + 本机构建</h2>
+  <pre><code><span class="c"># 1) 获取最新代码（首次克隆；已有则拉取 master，须含全部修复提交）</span>
+git clone &lt;你的仓库地址&gt; hxmall &amp;&amp; cd hxmall      <span class="c"># 首次部署</span>
+git checkout master &amp;&amp; git pull                  <span class="c"># 已有代码时更新</span>
+git log --oneline -3                             <span class="c"># 确认有 fix(api)/docs(deploy) 等提交</span>
+
+<span class="c"># 2) 构建管理后台（base 已是 /admin/）</span>
+cd admin &amp;&amp; npm install &amp;&amp; npm run build
 rm -rf ../backend/admin-dist &amp;&amp; mkdir -p ../backend/admin-dist
 cp -r dist/* ../backend/admin-dist/
+
+<span class="c"># 3) 构建后端镜像</span>
 cd ../backend &amp;&amp; docker build -t hxmall-api:latest .</code></pre>
   <blockquote><code>.dockerignore</code> 已排除密钥/缓存。生产密钥<b>不打进镜像</b>，走 compose 环境变量注入。</blockquote>
 </section>
