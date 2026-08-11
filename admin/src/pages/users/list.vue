@@ -32,7 +32,11 @@
 
     <!-- Table -->
     <el-table :data="tableData" v-loading="loading" border stripe class="user-table">
-      <el-table-column prop="phone" label="手机号" width="140" />
+      <el-table-column prop="phone" label="手机号" width="140">
+        <template #default="{ row }">
+          {{ displayPhone(row) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="company_name" label="公司名" min-width="180">
         <template #default="{ row }">
           {{ row.company_name || '-' }}
@@ -102,7 +106,7 @@
       <div v-if="currentUser" class="review-info">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="手机号">
-            {{ currentUser.phone }}
+            {{ displayPhone(currentUser) }}
           </el-descriptions-item>
           <el-descriptions-item label="公司名">
             {{ currentUser.company_name || '-' }}
@@ -197,6 +201,14 @@ const approveRules: FormRules = {
 }
 
 // ──────────── Helpers ────────────
+// 微信登录用户无真实手机号，phone 为 wx_ 前缀的合成值——展示昵称或"微信用户"
+function displayPhone(row: UserItem): string {
+  if (row.phone?.startsWith('wx_')) {
+    return row.nickname || '微信用户'
+  }
+  return row.phone
+}
+
 function levelLabel(level: string): string {
   const map: Record<string, string> = {
     normal: '普通',

@@ -8,6 +8,7 @@ export interface UserItem {
   role: string
   level: string                  // normal | silver | gold | platinum
   status: string                 // pending_review | active | frozen
+  nickname?: string              // 微信用户昵称（phone 为 wx_ 前缀时展示）
   company_name?: string
   contact_person?: string
   business_license?: string
