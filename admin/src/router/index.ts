@@ -80,7 +80,8 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 由后端托管在 /admin 路径，history 模式需带 /admin/ 前缀
+  history: createWebHistory('/admin/'),
   routes,
 })
 
