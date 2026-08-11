@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HXMall 生产服务器部署指南</title>
+<style>
+  :root {
+    --primary: #FF7B7B;
+    --primary-dark: #e66a6a;
+    --bg: #FFF8F0;
+    --card: #ffffff;
+    --text: #4a3728;
+    --text-2: #7a6a5a;
+    --border: #f0e0d0;
+    --code-bg: #2b2b2b;
+    --code-text: #e8e8e8;
+    --green: #3a9d5d;
+    --red: #e05555;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    line-height: 1.7;
+  }
+  header.hero {
+    background: linear-gradient(135deg, #FF7B7B 0%, #FFA5A5 100%);
+    color: #fff;
+    padding: 40px 24px 48px;
+    text-align: center;
+  }
+  header.hero h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 2px; }
+  header.hero p { margin: 0 auto; max-width: 720px; opacity: .95; font-size: 15px; }
+  .toc {
+    max-width: 880px; margin: -20px auto 0; padding: 18px 24px;
+    background: var(--card); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  }
+  .toc a { color: var(--primary); text-decoration: none; margin-right: 14px; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+  main { max-width: 880px; margin: 24px auto 60px; padding: 0 16px; }
+  section.step {
+    background: var(--card); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    margin: 18px 0; padding: 22px 26px; border-left: 4px solid var(--primary);
+  }
+  h2 {
+    margin: 0 0 12px; font-size: 20px; color: var(--primary-dark); display: flex; align-items: center; gap: 8px;
+  }
+  h2 .num {
+    background: var(--primary); color: #fff; width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+  }
+  h3 { font-size: 16px; margin: 16px 0 8px; color: var(--text); }
+  p { margin: 8px 0; }
+  blockquote {
+    margin: 10px 0; padding: 10px 14px; background: #fff6f6; border-left: 3px solid var(--primary);
+    color: var(--text-2); border-radius: 0 8px 8px 0; font-size: 14px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-text); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  pre .c { color: #8a8a8a; }   /* comment */
+  code:not(pre code) {
+    background: #f3ece2; color: var(--primary-dark); padding: 1px 6px; border-radius: 5px; font-size: 13px;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  th { background: #fff3f3; color: var(--primary-dark); font-weight: 600; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .arch {
+    background: #2b2b2b; color: #e8e8e8; border-radius: 10px; padding: 14px 16px;
+    font-family: Consolas, Menlo, monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; white-space: pre;
+  }
+  .checklist { list-style: none; padding-left: 4px; }
+  .checklist li::before { content: "☐ "; color: var(--primary); font-weight: 700; }
+  .faq { margin: 6px 0; }
+  .faq b { color: var(--primary-dark); }
+  footer { text-align: center; color: var(--text-2); font-size: 13px; padding: 24px 0 40px; }
+  .tag { display: inline-block; background: #fff3f3; color: var(--primary-dark); font-size: 12px;
+         padding: 2px 10px; border-radius: 50px; margin-right: 6px; }
+  @media print {
+    body { background: #fff; }
+    header.hero { background: #fff; color: var(--text); border-bottom: 2px solid var(--primary); }
+    section.step { box-shadow: none; border: 1px solid var(--border); }
+    .toc { box-shadow: none; border: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>🧸 HXMall 生产服务器部署指南</h1>
+  <p>适用：正式上线 <b>baby.mx.yn.cn</b>（真实域名 + HTTPS + 真实微信登录）。若只是内网联调，可跳过 HTTPS 与微信合法域名。</p>
+</header>
+
+<div class="toc">
+  <a href="#step0">0 前置</a>
+  <a href="#step1">1 构建</a>
+  <a href="#step2">2 配置</a>
+  <a href="#step3">3 部署</a>
+  <a href="#step4">4 迁移</a>
+  <a href="#step5">5 管理员</a>
+  <a href="#step6">6 Nginx</a>
+  <a href="#step7">7 验证</a>
+  <a href="#step8">8 小程序</a>
+  <a href="#sec">安全</a>
+  <a href="#rollback">回滚</a>
+  <a href="#faq">FAQ</a>
+</div>
+
+<main>
+
+<section class="step">
+  <h2 id="arch">部署架构</h2>
+  <div class="arch">微信小程序/浏览器 → https://baby.mx.yn.cn → Nginx(443) → hxmall-api-1(:7000)
+                                                    ├ /admin        → admin SPA（构建 base=/admin/）
+                                                    ├ /api/v1/*     → FastAPI
+                                                    ├ /api/v1/ai/ws → WebSocket
+                                                    ├ hxmall-db-1   (pgvector，内部，不对外端口)
+                                                    └ hxmall-redis-1(内部)</div>
+  <p><span class="tag">只部署 Docker</span><span class="tag">现有 Nginx 反代</span></p>
+</section>
+
+<section class="step" id="step0">
+  <h2><span class="num">0</span> 前置准备</h2>
+  <table>
+    <tr><th>项</th><th>要求</th></tr>
+    <tr><td>服务器</td><td>Ubuntu 22.04+，4核8G+，50G+；Docker + Docker Compose v2</td></tr>
+    <tr><td>域名</td><td><code>baby.mx.yn.cn</code> 与 <code>wss://baby.mx.yn.cn</code> A 记录指向生产服务器 IP</td></tr>
+    <tr><td>微信</td><td>已认证小程序，拿到 <code>appid</code>/<code>secret</code></td></tr>
+    <tr><td>SSH</td><td>用密钥登录（生产<b>禁用密码</b>，勿把密码写进脚本）</td></tr>
+    <tr><td>代码</td><td>本机 git <code>master</code> 已含全部修复（admin base=/admin、307 路由、bcrypt 4.0.1、昵称展示）</td></tr>
+  </table>
+</section>
+
+<section class="step" id="step1">
+  <h2><span class="num">1</span> 本机构建</h2>
+  <pre><code>cd admin && npm install &amp;&amp; npm run build          <span class="c"># base 已是 /admin/</span>
+rm -rf ../backend/admin-dist &amp;&amp; mkdir -p ../backend/admin-dist
+cp -r dist/* ../backend/admin-dist/
+cd ../backend &amp;&amp; docker build -t hxmall-api:latest .</code></pre>
+  <blockquote><code>.dockerignore</code> 已排除密钥/缓存。生产密钥<b>不打进镜像</b>，走 compose 环境变量注入。</blockquote>
+</section>
+
+<section class="step" id="step2">
+  <h2><span class="num">2</span> 生产配置</h2>
+  <p>从 <code>deploy/.env.example</code> 复制为 <code>deploy/.env.production</code>，填真实值：</p>
+  <pre><code>JWT_SECRET_KEY=&lt;openssl rand -hex 32 生成&gt;
+WECHAT_APPID=&lt;appid&gt;
+WECHAT_SECRET=&lt;secret&gt;
+DEEPSEEK_API_KEY=...   <span class="c"># 可选</span>
+QWEN_API_KEY=...       <span class="c"># 可选</span></code></pre>
+  <blockquote><code>.env.production</code> <b>不要提交 git</b>。</blockquote>
+</section>
+
+<section class="step" id="step3">
+  <h2><span class="num">3</span> 部署（一键脚本）</h2>
+  <pre><code>chmod +x deploy/deploy-prod.sh
+./deploy/deploy-prod.sh &lt;生产服务器IP&gt; [SSH用户] [/opt/hxmall]</code></pre>
+  <p>脚本依次：构建 admin → 构建镜像 → 推镜像 → 上传 compose/.env → <code>up -d</code> → 迁移 → 建管理员 → 验证。</p>
+  <p>手动方式见下。</p>
+</section>
+
+<section class="step" id="step4">
+  <h2><span class="num">4</span> 数据库迁移（关键）</h2>
+  <pre><code>ssh user@PROD_IP "cd /opt/hxmall &amp;&amp; docker compose exec -T api alembic upgrade head"
+<span class="c"># 应看到 Running upgrade c3d4e5f6a7b8 -&gt; d4e5f6a7b8c9</span></code></pre>
+</section>
+
+<section class="step" id="step5">
+  <h2><span class="num">5</span> 初始化管理员</h2>
+  <pre><code>ssh user@PROD_IP "cd /opt/hxmall &amp;&amp; docker compose exec -T api python -" &lt;&lt;'PY'
+import asyncio
+from app.database import async_session_factory
+from app.models.user import User, UserRole, UserStatus, RetailerLevel
+from app.services.auth_service import hash_password
+from sqlalchemy import select
+async def main():
+    async with async_session_factory() as s:
+        r = await s.execute(select(User).where(User.role==UserRole.ADMIN))
+        if r.scalars().first(): print('admin exists')
+        else:
+            s.add(User(phone='13800000000', hashed_password=hash_password('admin123'),
+                       role=UserRole.ADMIN, level=RetailerLevel.NORMAL, status=UserStatus.ACTIVE))
+            await s.commit(); print('admin created')
+asyncio.run(main())
+PY</code></pre>
+</section>
+
+<section class="step" id="step6">
+  <h2><span class="num">6</span> Nginx 反代（现有 nginx 只加 location 块）</h2>
+  <blockquote>本部署<b>只部署 Docker</b>；域名反代用你现有 nginx，无需新建容器。</blockquote>
+  <ol>
+    <li>打开你现有 nginx 的 <code>server</code> 块（处理 <code>baby.mx.yn.cn</code> 的那个）</li>
+    <li>把 <code>deploy/nginx-prod.conf</code> 中的 <b>① location 片段</b> 粘贴进该 server 块</li>
+    <li>确认后端容器已把 7000 发布到宿主机（compose 已配 <code>7000:7000</code>）→ nginx 反代到 <code>127.0.0.1:7000</code></li>
+    <li>若你的 nginx 是<b>容器</b>运行：把 <code>proxy_pass</code> 改成 <code>http://host.docker.internal:7000</code>，并给 nginx 容器加 <code>extra_hosts: host.docker.internal:host-gateway</code></li>
+    <li><code>nginx -t &amp;&amp; nginx -s reload</code></li>
+    <li>验证 <code>https://baby.mx.yn.cn/api/v1/health</code> 与 <code>/admin/</code></li>
+  </ol>
+</section>
+
+<section class="step" id="step7">
+  <h2><span class="num">7</span> 全链路验证</h2>
+  <table>
+    <tr><th>检查</th><th>命令</th></tr>
+    <tr><td>健康</td><td><code>curl https://baby.mx.yn.cn/api/v1/health</code> → <code>db:ok redis:ok</code></td></tr>
+    <tr><td>后台</td><td>浏览器 <code>https://baby.mx.yn.cn/admin/</code>，管理员登录</td></tr>
+    <tr><td>微信登录</td><td>小程序点登录，确认拿到真实 openid（非 dev_ 模式）</td></tr>
+    <tr><td>主链路</td><td>浏览→详情→加购→下单→订单操作</td></tr>
+  </table>
+</section>
+
+<section class="step" id="step8">
+  <h2><span class="num">8</span> 小程序发布</h2>
+  <ol>
+    <li><code>cd miniapp &amp;&amp; npm install &amp;&amp; npm run build:mp-weixin</code></li>
+    <li>微信开发者工具导入 <code>dist/build/mp-weixin</code> → 上传</li>
+    <li>mp 后台配置合法域名：request <code>https://baby.mx.yn.cn</code>，socket <code>wss://baby.mx.yn.cn</code></li>
+    <li>提交审核 → 发布</li>
+  </ol>
+</section>
+
+<section class="step" id="sec">
+  <h2>安全清单</h2>
+  <ul class="checklist">
+    <li>SSH 密钥登录，禁用密码</li>
+    <li><code>JWT_SECRET_KEY</code> 用 <code>openssl rand -hex 32</code> 生成</li>
+    <li>数据库密码改强（compose 里 <code>postgres/postgres</code>），db/redis 用 <code>expose</code> 不对外</li>
+    <li>管理员初始密码 <code>admin123</code> 上线后立即改</li>
+    <li>微信 secret 只在服务器 <code>.env</code>，不进 git/镜像</li>
+    <li>定期备份 <code>pgdata</code> volume 与 <code>uploads/</code></li>
+    <li>监控 <code>docker compose logs -f api</code>、磁盘、容器健康</li>
+  </ul>
+</section>
+
+<section class="step" id="rollback">
+  <h2>回滚</h2>
+  <pre><code><span class="c"># 部署前保留旧镜像</span>
+docker tag hxmall-api:latest hxmall-api:backup-$(date +%Y%m%d)
+<span class="c"># 回滚：docker-compose.yml 的 api 服务加 image: hxmall-api:backup-xxx 后 up -d</span></code></pre>
+</section>
+
+<section class="step" id="faq">
+  <h2>常见问题</h2>
+  <p class="faq"><b>后台空白</b>：确认 admin 构建 base 是 <code>/admin/</code>（vite.config.ts），资源路径应含 <code>/admin/assets/</code>；浏览器强制刷新。</p>
+  <p class="faq"><b>接口 307</b>：本仓库已补齐所有无斜杠路由变体；若新增路由，跑 <code>tests/test_route_slash.py</code> 防止回归。</p>
+  <p class="faq"><b>微信登录不进</b>：检查 <code>.env</code> 的 <code>WECHAT_APPID/SECRET</code> 是否为空（空 = 开发模式），compose 是否注入。</p>
+  <p class="faq"><b>bcrypt 告警</b>：<code>requirements.txt</code> 已锁 <code>bcrypt==4.0.1</code>。</p>
+</section>
+
+</main>
+
+<footer>HXMall · 生产部署指南 · 由 Claude 生成 · <code>deploy/</code> 目录配套：deploy-prod.sh · nginx-prod.conf · .env.example</footer>
+
+</body>
+</html>
