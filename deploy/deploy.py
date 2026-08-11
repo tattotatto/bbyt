@@ -4,9 +4,12 @@ HX Mall deployment script - upload admin + update backend + rebuild
 """
 import paramiko, os, sys, time
 
-SERVER = "192.168.50.157"
-USER = "johnwoo"
-PASSWORD = "REDACTED"
+SERVER = os.environ.get("HXMALL_SERVER", "192.168.50.157")
+USER = os.environ.get("HXMALL_SERVER_USER", "johnwoo")
+# 密码不再写死在代码里：从环境变量读取，或改用 SSH 密钥
+PASSWORD = os.environ.get("HXMALL_SERVER_PASSWORD", "")
+if not PASSWORD:
+    raise SystemExit("请设置环境变量 HXMALL_SERVER_PASSWORD（或用 SSH 密钥代替密码）")
 PROJECT_ROOT = "/opt/hxmall"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

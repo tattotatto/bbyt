@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Fix port conflicts, restart with new code, verify admin"""
-import paramiko, time
+import paramiko, os, time
+
+SERVER = os.environ.get("HXMALL_SERVER", "192.168.50.157")
+USER = os.environ.get("HXMALL_SERVER_USER", "johnwoo")
+# 密码不再写死在代码里：从环境变量读取，或改用 SSH 密钥
+PASSWORD = os.environ.get("HXMALL_SERVER_PASSWORD", "")
+if not PASSWORD:
+    raise SystemExit("请设置环境变量 HXMALL_SERVER_PASSWORD（或用 SSH 密钥代替密码）")
 
 SSH = paramiko.SSHClient()
 SSH.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-SSH.connect("192.168.50.157", username="johnwoo", password="REDACTED", timeout=15)
+SSH.connect(SERVER, username=USER, password=PASSWORD, timeout=15)
 
 def run(cmd, timeout=60):
     stdin, stdout, stderr = SSH.exec_command(cmd, timeout=timeout)
