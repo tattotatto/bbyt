@@ -62,6 +62,7 @@ class UserListOut(BaseModel):
     role: str
     level: str
     status: str
+    nickname: str | None = None
     company_name: str | None = None
     contact_person: str | None = None
     created_at: datetime | None = None

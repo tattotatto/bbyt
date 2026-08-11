@@ -29,6 +29,7 @@ async def list_featured_cases(
 
 
 @router.get("/", response_model=APIResponse[PaginatedResponse[CaseListOut]], summary="案例列表")
+@router.get("", response_model=APIResponse[PaginatedResponse[CaseListOut]], summary="案例列表", include_in_schema=False)
 async def list_cases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -103,6 +104,7 @@ async def get_case(case_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/", response_model=APIResponse[CaseOut], summary="创建案例（管理员）")
+@router.post("", response_model=APIResponse[CaseOut], summary="创建案例（管理员）", include_in_schema=False)
 async def create_case(
     req: CaseCreate,
     _admin: dict = Depends(require_role("admin", "operator")),

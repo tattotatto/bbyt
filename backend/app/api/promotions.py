@@ -23,6 +23,7 @@ async def active_promotions(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/", response_model=APIResponse[dict], summary="创建促销（管理员）")
+@router.post("", response_model=APIResponse[dict], summary="创建促销（管理员）", include_in_schema=False)
 async def create_promotion(
     req: dict,
     _admin: dict = Depends(require_role("admin", "operator")),

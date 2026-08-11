@@ -67,6 +67,7 @@ async def update_retailer_profile(
 
 
 @router.get("/", response_model=APIResponse[PaginatedResponse[UserListOut]], summary="用户列表（管理员）")
+@router.get("", response_model=APIResponse[PaginatedResponse[UserListOut]], summary="用户列表（管理员）", include_in_schema=False)
 async def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -111,6 +112,7 @@ async def list_users(
             role=user.role.value if hasattr(user.role, 'value') else user.role,
             level=user.level.value if hasattr(user.level, 'value') else user.level,
             status=user.status.value if hasattr(user.status, 'value') else user.status,
+            nickname=user.nickname,
             company_name=company_name,
             contact_person=contact_person,
             created_at=user.created_at,
