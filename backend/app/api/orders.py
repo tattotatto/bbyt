@@ -20,6 +20,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=APIResponse[OrderOut], summary="创建订单")
+@router.post("", response_model=APIResponse[OrderOut], summary="创建订单", include_in_schema=False)
 async def place_order(
     req: OrderCreate,
     current_user: dict = Depends(get_current_user),
@@ -59,6 +60,7 @@ async def place_order(
 
 
 @router.get("/", response_model=APIResponse[PaginatedResponse[OrderListOut]], summary="我的订单列表")
+@router.get("", response_model=APIResponse[PaginatedResponse[OrderListOut]], summary="我的订单列表", include_in_schema=False)
 async def list_my_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

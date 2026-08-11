@@ -37,6 +37,7 @@ def _build_cart_item_out(item: CartItem) -> CartItemOut:
 
 
 @router.get("/", response_model=APIResponse[list[CartItemOut]], summary="我的购物车")
+@router.get("", response_model=APIResponse[list[CartItemOut]], summary="我的购物车", include_in_schema=False)
 async def list_cart(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -51,6 +52,7 @@ async def list_cart(
 
 
 @router.post("/", response_model=APIResponse[CartItemOut], summary="加入购物车")
+@router.post("", response_model=APIResponse[CartItemOut], summary="加入购物车", include_in_schema=False)
 async def add_to_cart(
     req: CartItemCreate,
     current_user: dict = Depends(get_current_user),
@@ -152,6 +154,7 @@ async def delete_cart_item(
 
 
 @router.delete("/", response_model=APIResponse, summary="清空购物车")
+@router.delete("", response_model=APIResponse, summary="清空购物车", include_in_schema=False)
 async def clear_cart(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

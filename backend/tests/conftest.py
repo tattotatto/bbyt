@@ -68,7 +68,7 @@ async def client():
     sys.modules["app.database"].async_session_factory = _test_session_factory
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=True) as ac:
+    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=False) as ac:
         yield ac
 
     # 清理：删表（不销毁引擎，复用）
