@@ -7,7 +7,7 @@
       <view class="home-nav home-nav--loading" :style="{ paddingTop: statusBarHeight + 'px' }">
         <view class="home-nav__inner">
           <text class="home-nav__brand-icon">🧸</text>
-          <text class="home-nav__title">HX Mall</text>
+          <text class="home-nav__title">蓓贝婴童</text>
           <view style="width:120rpx" />
         </view>
       </view>
@@ -38,7 +38,7 @@
           <view class="home-nav__left">
             <text class="home-nav__brand-icon">🧸</text>
           </view>
-          <text class="home-nav__title">HX Mall</text>
+          <text class="home-nav__title">蓓贝婴童</text>
           <view class="home-nav__right">
             <view class="home-nav__icon" @tap="goToSearch">
               <text class="home-nav__icon-text">🔍</text>
@@ -72,7 +72,7 @@
           :duration="500"
           :circular="true"
           indicator-color="rgba(255,255,255,0.5)"
-          indicator-active-color="#FF7B7B"
+          indicator-active-color="#e16531"
         >
           <swiper-item v-for="(banner, index) in banners" :key="index">
             <view
@@ -266,7 +266,7 @@ function onCartTap() {
 
 // ── Banners ─────────────────────────────────────────────────────────────────
 const BANNER_GRADIENTS = [
-  'linear-gradient(135deg, #FF7B7B 0%, #FFB3B3 100%)',
+  'linear-gradient(135deg, #e16531 0%, #f5b28f 100%)',
   'linear-gradient(135deg, #7EC8E3 0%, #A8DFF0 100%)',
   'linear-gradient(135deg, #A8D8B9 0%, #C8E8D4 100%)',
   'linear-gradient(135deg, #FFB347 0%, #FFCC80 100%)',
@@ -478,7 +478,7 @@ function goToMoreCases() {
 /*  CUSTOM NAVIGATION BAR                                                     */
 /* ========================================================================== */
 .home-nav {
-  background: #FF7B7B;
+  background: #e16531;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -560,7 +560,7 @@ function goToMoreCases() {
 /* ========================================================================== */
 .home-search {
   padding: 20rpx 24rpx;
-  background: #FF7B7B;
+  background: #e16531;
 }
 
 /* ========================================================================== */
@@ -689,7 +689,7 @@ function goToMoreCases() {
   width: 4px;
   height: 32rpx;
   border-radius: 2px;
-  background: #FF7B7B;
+  background: #e16531;
   margin-right: 16rpx;
 }
 
@@ -724,7 +724,7 @@ function goToMoreCases() {
 
 .home-section-error__retry {
   font-size: 26rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 
