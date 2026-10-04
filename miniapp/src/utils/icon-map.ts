@@ -26,6 +26,9 @@ export const EMOJI_TO_ICON: Record<string, string> = {
   '😵': 'empty-page',          // 页面级空态
   '🔐': 'lock',                // 未登录 / 无权限
   '🔄': 'reload',              // 重试 / 刷新
+  // ⚠ 只写不带 U+FE0F 的形式：调用方写的是 '⚠️'（带变体选择符），
+  // 查表时会被 iconForEmoji 归一化掉，两种写法都命中这一条。
+  '⚠': 'empty-wifi',           // 加载失败 / 网络异常
 
   // ── 内容与运营 ────────────────────────────────
   '🎨': 'photo',               // 设计案例
@@ -58,5 +61,20 @@ export const EMOJI_TO_ICON: Record<string, string> = {
 export const FALLBACK_ICON = 'more-circle'
 
 export function iconForEmoji(emoji: string, fallback: string = FALLBACK_ICON): string {
-  return EMOJI_TO_ICON[emoji] ?? fallback
+  const direct = EMOJI_TO_ICON[emoji]
+  if (direct) return direct
+
+  // 变体选择符（U+FE0E 文本形态 / U+FE0F 表情形态）只影响渲染，不影响语义：
+  // 同一个字符带不带它都是同一个字。映射表里只存一份，查表前先按码点去掉，
+  // 免得表里出现一个肉眼看不见的键。
+  // 这里用码点数字而不是正则字符类 —— 字符类要把变体选择符本身写进源码，
+  // 而它是不可见的，改错了也看不出来。
+  const stripped = [...emoji]
+    .filter((ch) => {
+      const cp = ch.codePointAt(0)
+      return cp !== 0xfe0e && cp !== 0xfe0f
+    })
+    .join('')
+
+  return EMOJI_TO_ICON[stripped] ?? fallback
 }

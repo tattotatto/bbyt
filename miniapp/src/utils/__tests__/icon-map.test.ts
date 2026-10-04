@@ -166,4 +166,16 @@ describe('iconForEmoji', () => {
     expect(iconForEmoji('🦄')).toBe('more-circle')
     expect(iconForEmoji('🦄', 'info')).toBe('info')
   })
+
+  // ⚠️ 是 U+26A0 + U+FE0F（变体选择符）。U+26A0 落在 0x1F300 区段之外，
+  // 所以上面那条「源码里的 emoji 都有映射」的扫描**从来就没管过它** ——
+  // 而它恰好是 EmptyState 用得最多的一个（「加载失败」6 处）。
+  // 变体选择符是渲染层的修饰，不该参与查表：两种写法都要能查到。
+  it('带变体选择符 U+FE0F 的 emoji 查得到', () => {
+    expect(iconForEmoji('⚠️')).toBe('empty-wifi')
+  })
+
+  it('同一个字符不带 U+FE0F 也查得到', () => {
+    expect(iconForEmoji('⚠')).toBe('empty-wifi')
+  })
 })
