@@ -1,4 +1,5 @@
 import http from './request'
+import type { Paginated } from './types'
 
 export interface DesignCase {
   id: string
@@ -21,12 +22,10 @@ export interface CaseListParams {
   keyword?: string
 }
 
-export interface CaseListResult {
-  list: DesignCase[]
-  total: number
-  page: number
-  page_size: number
-}
+// 直接采用仓库既有的分页形状（api/types.ts 的 Paginated<T>），不再自己重声明一份。
+// 后端 app/schemas/common.py 的 PaginatedResponse 就是 items/total/page/page_size，
+// 重声明那份曾把 items 写成 list，让案例列表对真实响应用不了。
+export type CaseListResult = Paginated<DesignCase>
 
 /** GET /cases/tags 的返回形状，与后端 app/api/cases.py:list_tags 一致 */
 export interface CaseTags {

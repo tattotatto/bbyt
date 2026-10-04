@@ -131,12 +131,12 @@ async function loadCases(isRefresh = false) {
     const res = await getCaseList(params)
 
     if (isRefresh || page.value === 1) {
-      cases.value = res.data.list
+      cases.value = res.data.items
     } else {
-      cases.value = [...cases.value, ...res.data.list]
+      cases.value = [...cases.value, ...res.data.items]
     }
 
-    hasMore.value = res.data.list.length >= PAGE_SIZE
+    hasMore.value = res.data.items.length >= PAGE_SIZE
   } catch (err: any) {
     errorMsg.value = err.message || '加载失败'
   } finally {

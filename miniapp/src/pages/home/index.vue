@@ -350,7 +350,7 @@ async function fetchCases() {
   sectionErrors.cases = false
   try {
     const res = await getCaseList({ page: 1, page_size: 4 })
-    caseItems.value = res.data.list || []
+    caseItems.value = res.data.items || []
   } catch {
     sectionErrors.cases = true
     caseItems.value = []

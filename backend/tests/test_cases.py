@@ -196,3 +196,20 @@ async def test_list_tags(client: AsyncClient):
     assert len(data["category_tags"]) >= 2
     assert len(data["style_tags"]) >= 3
     assert len(data["area_ranges"]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_list_cases_envelope_fields(client: AsyncClient):
+    """锁住分页信封的字段名。
+
+    前端 api/cases.ts 的 CaseListResult 直接采用 api/types.ts 的 Paginated<T>
+    （items/total/page/page_size）。这里把同一份契约钉在后端侧：前端任何一层
+    把 items 写成别的名字（曾经写成 list），都会让案例列表对真实响应不可用，
+    而前端测试全部 mock 掉 ../request，看不见这件事。
+    """
+    resp = await client.get("/api/v1/cases/")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert set(data.keys()) == {"items", "total", "page", "page_size"}
+    assert "list" not in data
+    assert isinstance(data["items"], list)
