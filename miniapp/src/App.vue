@@ -46,6 +46,9 @@ onHide(() => {
 /* Import global styles */
 @import '@/styles/global.scss';
 
+/* uview-plus 图标字体（base64 内联，覆盖 uview-plus 自带的远程 @font-face） */
+@import '@/styles/uview-iconfont.scss';
+
 /* App-level styles */
 page {
   background-color: #FFF8F0;

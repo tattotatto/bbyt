@@ -1,0 +1,15 @@
+/**
+ * uni-app 会把本文件自动注入到每一个 <style lang="scss"> 里
+ * （见 @dcloudio/vite-plugin-uni 的 config/css.js）。
+ *
+ * 所以这里只放 scss 变量，不放任何会产出 CSS 的样式 —— 注入是逐组件的，
+ * 放实际样式会让微信小程序主包按组件数成倍膨胀。
+ *
+ * uview-plus 的组件 SFC 直接用 $u-primary / $u-warning 这类变量
+ * （例如 components/u-icon/u-icon.vue 的 scoped 样式），这些变量必须
+ * 在这里引入。uview-plus/theme.scss 的文件头也是这么说的：
+ * 「此文件为uView的主题变量，这些变量目前只能通过uni.scss引入才有效」。
+ *
+ * theme.scss 全是 `$var: ... !default;`，不产出 CSS。
+ */
+@import 'uview-plus/theme.scss';
