@@ -198,7 +198,7 @@ function retry() {
 
 .retry-btn {
   padding: 16rpx 48rpx;
-  background-color: #FF7B7B;
+  background-color: #e16531;
   border-radius: 32rpx;
   font-size: 26rpx;
   color: #FFFFFF;
@@ -301,7 +301,7 @@ function retry() {
 
 .tag-style {
   background-color: #FFF0F0;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .tag-category {
@@ -371,7 +371,7 @@ function retry() {
 .product-price {
   font-size: 26rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
   margin-top: 4rpx;
 }
 
@@ -410,8 +410,8 @@ function retry() {
 }
 
 .btn-like.liked {
-  border-color: #FFA5A5;
-  color: #FF7B7B;
+  border-color: #f4a97e;
+  color: #e16531;
 }
 
 .btn-contact {
@@ -421,7 +421,7 @@ function retry() {
   justify-content: center;
   height: 76rpx;
   border-radius: 50rpx;
-  background-color: #FF7B7B;
+  background-color: #e16531;
   font-size: 28rpx;
   font-weight: 600;
   color: #FFFFFF;

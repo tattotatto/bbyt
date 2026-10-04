@@ -228,7 +228,7 @@ onReachBottom(() => {
   border-radius: 32rpx;
   font-size: 24rpx;
   color: #4a3728;
-  border: 1rpx solid #FFA5A5;
+  border: 1rpx solid #f4a97e;
 }
 
 /* Dropdown */
@@ -252,8 +252,8 @@ onReachBottom(() => {
 
 .tag-pill.active {
   color: #FFFFFF;
-  background-color: #FF7B7B;
-  border-color: #FF7B7B;
+  background-color: #e16531;
+  border-color: #e16531;
 }
 
 /* Error state */
@@ -279,7 +279,7 @@ onReachBottom(() => {
 
 .retry-btn {
   padding: 16rpx 48rpx;
-  background-color: #FF7B7B;
+  background-color: #e16531;
   border-radius: 32rpx;
   font-size: 26rpx;
   color: #FFFFFF;
