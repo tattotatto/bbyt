@@ -1,6 +1,8 @@
 <template>
-  <view class="search-bar">
-    <view class="search-bar__icon">🔍</view>
+  <view class="search-bar" :class="{ 'search-bar--inline': variant === 'inline' }">
+    <view class="search-bar__icon">
+      <AppIcon name="search" :size="30" tone="muted" />
+    </view>
     <input
       class="search-bar__input"
       :value="modelValue"
@@ -18,26 +20,29 @@
       class="search-bar__clear"
       @tap.stop="onClear"
     >
-      <text class="search-bar__clear-icon">✕</text>
+      <AppIcon name="close" :size="28" tone="muted" />
     </view>
     <view
       v-else-if="showVoice"
       class="search-bar__voice"
       @tap.stop="onVoice"
     >
-      <text class="search-bar__voice-icon">🎤</text>
+      <AppIcon name="mic" :size="30" tone="muted" />
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { watch, ref } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 interface Props {
   placeholder?: string
   modelValue?: string
   showVoice?: boolean
   autoFocus?: boolean
+  /** standalone = 自带背景阴影，独立使用；inline = 透明，由外层容器（如 BrandHero 的白胶囊）提供背景 */
+  variant?: 'standalone' | 'inline'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,6 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   showVoice: true,
   autoFocus: false,
+  variant: 'standalone',
 })
 
 const emit = defineEmits<{
@@ -107,6 +113,8 @@ function onBlur() {
   margin-right: 12rpx;
   flex-shrink: 0;
   line-height: 1;
+  display: flex;
+  align-items: center;
 }
 
 .search-bar__input {
@@ -127,12 +135,6 @@ function onBlur() {
   justify-content: center;
 }
 
-.search-bar__clear-icon {
-  color: #7a6a5a;
-  font-size: 28rpx;
-  line-height: 1;
-}
-
 .search-bar__voice {
   padding: 8rpx;
   flex-shrink: 0;
@@ -141,9 +143,13 @@ function onBlur() {
   justify-content: center;
 }
 
-.search-bar__voice-icon {
-  color: #FF7B7B;
-  font-size: 32rpx;
-  line-height: 1;
+/* inline 变体的外层（BrandHero 的白胶囊）已经画了背景和圆角，
+   自己再画一层就是双层白底。高度也交给外层定，这里只是填满。 */
+.search-bar--inline {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  flex: 1;
 }
 </style>
