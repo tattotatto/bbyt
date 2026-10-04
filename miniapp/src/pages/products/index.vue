@@ -1,146 +1,237 @@
 <template>
-  <view class="products-page has-custom-tabbar">
-    <!-- SearchBar at top -->
-    <view class="search-wrap">
-      <SearchBar
-        v-model="keyword"
-        placeholder="搜索儿童产品..."
-        @search="onSearch"
-      />
-    </view>
+  <view class="page has-custom-tabbar">
+    <!-- ① 品牌头图，紧凑版 + 搜索框 -->
+    <BrandHero
+      title="商品"
+      :compact="true"
+      show-search
+      @search="onSearchConfirm"
+    />
 
-    <!-- Category tabs - horizontal scroll of pill tabs from API -->
-    <view class="cat-section">
-      <scroll-view scroll-x class="cat-scroll" :show-scrollbar="false">
-        <view class="cat-list">
+    <!-- ② 上叠白卡：分类横滚。
+         选中态是「品牌色文字 + 下划短线」而不是实心胶囊 —— 圆形入口那套
+         在首页已经用过，这里再用一次会显得单调；而且文字 tab 条能容纳的
+         分类数量更多，横滑时也更容易看出还有多少个。 -->
+    <SurfaceCard overlap padding="0">
+      <scroll-view class="cat" scroll-x :show-scrollbar="false" enhanced>
+        <view class="cat__inner">
           <view
-            v-for="cat in categoryList"
-            :key="cat.id"
-            :class="['cat-pill', { active: activeCategoryId === cat.id }]"
-            @tap="onCategoryChange(cat.id)"
+            v-for="c in categoryTabs"
+            :key="c.id ?? 'all'"
+            class="cat__item"
+            @tap="onCategorySelect(c.id)"
           >
-            {{ cat.name }}
+            <text class="cat__label" :class="{ 'cat__label--active': activeCategoryId === c.id }">
+              {{ c.name }}
+            </text>
+            <view v-if="activeCategoryId === c.id" class="cat__underline" />
           </view>
         </view>
       </scroll-view>
-    </view>
+    </SurfaceCard>
 
-    <!-- Filter bar -->
-    <view class="filter-bar">
-      <view class="filter-item" @tap="cycleAgeFilter">
-        <text>{{ ageFilterLabel }}</text>
-      </view>
-      <view class="filter-item" @tap="cycleSortFilter">
-        <text>{{ sortFilterLabel }}</text>
-      </view>
-      <view class="filter-item" @tap="toggleStockFilter">
-        <text>仅看有货</text>
-        <text :class="{ check: true, 'check--active': onlyInStock }">
-          {{ onlyInStock ? '☑' : '☐' }}
+    <!-- ③ 排序条。「价格」这一格带箭头，重复点它是升降序切换 -->
+    <view class="sort">
+      <view
+        v-for="s in SORTS"
+        :key="s.key"
+        class="sort__item"
+        @tap="onSortSelect(s.key)"
+      >
+        <text class="sort__label" :class="{ 'sort__label--active': sort === s.key }">
+          {{ s.label }}
         </text>
+        <AppIcon
+          v-if="s.key === 'price'"
+          name="arrow-downward"
+          :size="24"
+          :tone="sort === s.key ? 'primary' : 'muted'"
+          :class="{ 'sort__arrow--asc': priceAsc }"
+        />
+        <AppIcon
+          v-else-if="s.key === 'filter'"
+          name="arrow-downward"
+          :size="24"
+          :tone="showFilter || filterActive ? 'primary' : 'muted'"
+          :class="{ 'sort__arrow--asc': showFilter }"
+        />
       </view>
     </view>
 
-    <!-- Loading state -->
-    <PageLoading v-if="loading" type="card" :count="4" />
-
-    <!-- Error state -->
-    <view v-else-if="errorMsg" class="error-state">
-      <view class="error-circle">
-        <text class="error-circle-icon">!</text>
-      </view>
-      <text class="error-text">{{ errorMsg }}</text>
-      <view class="error-retry" @tap="retry">
-        <text class="error-retry-text">重新加载</text>
+    <!-- 筛选行：「筛选」那一格展开的二级面板。适龄档位取自 utils/constants，
+         不在这里另抄一份 —— 抄错一个字后端是精确匹配（age_range == 传入值），
+         筛出来直接是空的，而且不报错。 -->
+    <view v-if="showFilter" class="filter">
+      <view class="filter__group">
+        <view
+          v-for="(a, i) in AGE_TABS"
+          :key="a.label"
+          class="chip"
+          :class="{ 'chip--active': ageIndex === i }"
+          @tap="onAgeSelect(i)"
+        >
+          <text class="chip__text">{{ a.label }}</text>
+        </view>
+        <view
+          class="chip"
+          :class="{ 'chip--active': onlyInStock }"
+          @tap="toggleStockFilter"
+        >
+          <text class="chip__text">仅看有货</text>
+        </view>
       </view>
     </view>
 
-    <!-- Empty state -->
+    <!-- 骨架屏紧贴筛选区下方而不是排在网格之后：等状态互斥地渲染，
+         否则 loading 时上面那片空网格已经把骨架顶出首屏了。 -->
+    <PageLoading v-if="loading" />
+
     <EmptyState
-      v-else-if="products.length === 0"
-      icon="📦"
-      title="暂无商品"
-      description="换个分类试试吧"
-      :showButton="false"
+      v-else-if="errorMsg"
+      :title="errorMsg"
+      description="检查网络后点击重试"
+      :show-button="true"
+      button-text="重新加载"
+      @button-click="retry"
     />
 
-    <!-- Product grid -->
-    <view v-else class="product-grid">
-      <ProductCard
-        v-for="p in products"
-        :key="p.id"
-        :product="p"
-        class="grid-card"
-        @click="goToDetail"
-      />
-    </view>
+    <template v-else>
+      <!-- ④ 两列瀑布流 -->
+      <view class="grid">
+        <ProductCard
+          v-for="p in products"
+          :key="p.id"
+          class="grid__item"
+          :product="p"
+          @click="goToDetail"
+        />
+      </view>
 
-    <!-- Load more -->
-    <view v-if="!loading && products.length > 0" class="load-more">
-      <text v-if="loadingMore" class="load-more-text">加载中...</text>
-      <text v-else-if="!hasMore" class="load-more-text load-more-text--end">— 没有更多了 —</text>
-    </view>
+      <EmptyState
+        v-if="products.length === 0 && !loadingMore"
+        title="没有找到商品"
+        description="换个分类或关键词试试"
+      />
+
+      <view v-if="loadingMore" class="list-foot">加载中…</view>
+      <view v-else-if="!hasMore && products.length" class="list-foot">已经到底了</view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import SearchBar from '../../components/SearchBar.vue'
+import AppIcon from '../../components/AppIcon.vue'
+import BrandHero from '../../components/BrandHero.vue'
+import SurfaceCard from '../../components/SurfaceCard.vue'
 import ProductCard from '../../components/ProductCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { getCategories, getProductList } from '../../api/products'
-import type { Product, Category } from '../../api/products'
+import type { ProductListItem, ProductListParams, Category } from '../../api/products'
+import { AGE_RANGES, PAGE_SIZE } from '../../utils/constants'
 
 // ── State ──────────────────────────────────────────────
 const loading = ref(true)
 const errorMsg = ref('')
-const products = ref<Product[]>([])
+const products = ref<ProductListItem[]>([])
 const page = ref(1)
 const loadingMore = ref(false)
 const hasMore = ref(true)
 
 // ── Filters ────────────────────────────────────────────
 const keyword = ref('')
-const activeCategoryId = ref(0)
-const categoryList = ref<{ id: string | number; name: string; icon: string }[]>([
-  { id: 0, name: '全部', icon: '' }
+// Category.id 是后端给的字符串（api/types.ts），不是数字 —— 旧代码这里写的是
+// number 并且到处 Number() 一次，属于把契约抹平成了碰巧能用的样子。
+const activeCategoryId = ref<string | undefined>(undefined)
+const categories = ref<Category[]>([])
+
+const ageIndex = ref(0) // 0 = 全部
+const onlyInStock = ref(false)
+const showFilter = ref(false)
+
+/** 「筛选」那一格要不要高亮：展开着，或任何一项筛选非默认 */
+const filterActive = computed(() => ageIndex.value > 0 || onlyInStock.value)
+
+// ── Sort ───────────────────────────────────────────────
+type SortKey = 'default' | 'sales_desc' | 'price' | 'newest'
+
+const SORTS: { key: SortKey | 'filter'; label: string }[] = [
+  { key: 'default', label: '综合' },
+  { key: 'sales_desc', label: '销量' },
+  { key: 'price', label: '价格' },
+  { key: 'filter', label: '筛选' },
+]
+
+const sort = ref<SortKey>('default')
+/** 「价格」这一格的当前方向。单独存一份，因为 price_asc / price_desc
+ *  是同一个按钮的两种状态，没法靠 sort === 'price_desc' 判断出来。 */
+const priceAsc = ref(false)
+
+/** 送给后端的 sort 参数（'default' 不发，走后端默认排序） */
+const sortParam = computed<'newest' | 'sales_desc' | 'price_asc' | 'price_desc' | undefined>(() => {
+  if (sort.value === 'default') return undefined
+  if (sort.value === 'price') return priceAsc.value ? 'price_asc' : 'price_desc'
+  return sort.value
+})
+
+function onSortSelect(key: SortKey | 'filter') {
+  if (key === 'filter') {
+    showFilter.value = !showFilter.value
+    return
+  }
+  if (key === 'price' && sort.value === 'price') {
+    // 重复点「价格」：在升降序之间切换，箭头跟着翻
+    priceAsc.value = !priceAsc.value
+  } else {
+    sort.value = key
+    if (key === 'price') priceAsc.value = false // 首次进入按价格降序
+  }
+  loadProducts(true)
+}
+
+// ── Categories ─────────────────────────────────────────
+const categoryTabs = computed<{ id: string | undefined; name: string }[]>(() => [
+  { id: undefined, name: '全部' },
+  ...categories.value.map((c) => ({ id: c.id, name: c.name })),
 ])
 
-const ageFilterIndex = ref(0) // 0=全部, 1=0-3岁, 2=3-6岁, 3=6-12岁
-const ageRanges = ['', '0-3岁', '3-6岁', '6-12岁']
-
-const sortIndex = ref(0) // 0=综合(default), 1=newest, 2=sales_desc, 3=price_asc, 4=price_desc
-const sortValues = ['', 'newest', 'sales_desc', 'price_asc', 'price_desc']
-const sortLabels = ['综合', '最新', '销量优先', '价格升序', '价格降序']
-
-const onlyInStock = ref(false)
-
-// ── Computed labels ────────────────────────────────────
-const ageFilterLabel = computed(() => {
-  return ageFilterIndex.value === 0 ? '适龄▾' : ageRanges[ageFilterIndex.value]
-})
-
-const sortFilterLabel = computed(() => {
-  const base = sortLabels[sortIndex.value]
-  return sortIndex.value === 0 ? base + '▾' : base
-})
-
-// ── Load categories ────────────────────────────────────
 async function loadCategories() {
   try {
     const res = await getCategories()
-    const list: { id: string | number; name: string; icon: string }[] = [{ id: 0, name: '全部', icon: '' }]
-    if (res.data && res.data.length > 0) {
-      res.data.forEach((cat: Category) => {
-        list.push({ id: cat.id, name: cat.name, icon: cat.icon ?? '' })
-      })
-    }
-    categoryList.value = list
+    categories.value = res.data || []
   } catch {
-    // keep default "全部"
+    // 拉不到分类就只剩「全部」，不阻断商品列表
+    categories.value = []
   }
+}
+
+function onCategorySelect(id: string | undefined) {
+  if (activeCategoryId.value === id) return
+  activeCategoryId.value = id
+  loadProducts(true)
+}
+
+// ── Age / stock ────────────────────────────────────────
+const AGE_TABS = [{ label: '全部' }, ...AGE_RANGES.map((a) => ({ label: a.label }))]
+
+function onAgeSelect(index: number) {
+  ageIndex.value = index
+  loadProducts(true)
+}
+
+function toggleStockFilter() {
+  onlyInStock.value = !onlyInStock.value
+  loadProducts(true)
+}
+
+// ── Search ─────────────────────────────────────────────
+// BrandHero 的 search 只在输入框 confirm 时触发，输入过程中不触发 ——
+// 否则每敲一个字打一次接口。
+function onSearchConfirm(kw: string) {
+  keyword.value = kw
+  loadProducts(true)
 }
 
 // ── Load products ──────────────────────────────────────
@@ -156,38 +247,18 @@ async function loadProducts(isRefresh = false) {
   errorMsg.value = ''
 
   try {
-    const sortValue = sortValues[sortIndex.value]
-    interface LoadParams {
-      page: number
-      page_size: number
-      category_id?: string
-      keyword?: string
-      age_range?: string
-      sort?: 'newest' | 'sales_desc' | 'price_asc' | 'price_desc'
-    }
-    const params: LoadParams = {
-      page: page.value,
-      page_size: 20,
-    }
-    if (activeCategoryId.value > 0) {
-      params.category_id = String(activeCategoryId.value)
-    }
-    if (keyword.value.trim()) {
-      params.keyword = keyword.value.trim()
-    }
-    if (ageFilterIndex.value > 0) {
-      params.age_range = ageRanges[ageFilterIndex.value]
-    }
-    if (sortValue) {
-      params.sort = sortValue as LoadParams['sort']
-    }
+    const params: ProductListParams = { page: page.value, page_size: PAGE_SIZE }
+    if (activeCategoryId.value) params.category_id = activeCategoryId.value
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
+    if (ageIndex.value > 0) params.age_range = AGE_RANGES[ageIndex.value - 1].value
+    if (sortParam.value) params.sort = sortParam.value
 
     const res = await getProductList(params)
     let list = res.data.items || []
 
-    // Client-side stock filter
+    // 有货与否是客户端过滤：后端 /products 没有这个参数
     if (onlyInStock.value) {
-      list = list.filter((p: Product) => (p.stock ?? 0) > 0)
+      list = list.filter((p) => (p.stock ?? 0) > 0)
     }
 
     if (isRefresh || page.value === 1) {
@@ -196,7 +267,7 @@ async function loadProducts(isRefresh = false) {
       products.value = [...products.value, ...list]
     }
 
-    hasMore.value = list.length >= 20
+    hasMore.value = list.length >= PAGE_SIZE
   } catch (err: any) {
     errorMsg.value = err.message || err.msg || '加载失败'
     if (page.value > 1) page.value--
@@ -206,45 +277,12 @@ async function loadProducts(isRefresh = false) {
   }
 }
 
-// ── Filter cyclers ─────────────────────────────────────
-function cycleAgeFilter() {
-  ageFilterIndex.value = (ageFilterIndex.value + 1) % 4
-}
-
-function cycleSortFilter() {
-  sortIndex.value = (sortIndex.value + 1) % 5
-}
-
-function toggleStockFilter() {
-  onlyInStock.value = !onlyInStock.value
-}
-
-// ── Watch filters to reload ────────────────────────────
-watch([ageFilterIndex, sortIndex, onlyInStock], () => {
-  page.value = 1
-  loadProducts(true)
-})
-
-// ── Event handlers ─────────────────────────────────────
-function onCategoryChange(catId: string | number) {
-  if (activeCategoryId.value === catId) return
-  activeCategoryId.value = Number(catId) || 0
-  page.value = 1
-  loadProducts(true)
-}
-
-function onSearch(kw: string) {
-  keyword.value = kw
-  page.value = 1
+function retry() {
   loadProducts(true)
 }
 
 function goToDetail(id: string | number) {
-  uni.navigateTo({ url: '/pages/products/detail?id=' + id })
-}
-
-function retry() {
-  loadProducts(true)
+  uni.navigateTo({ url: `/pages/products/detail?id=${id}` })
 }
 
 // ── Lifecycle ──────────────────────────────────────────
@@ -252,20 +290,30 @@ function retry() {
 // tabs 数组里的下标（商品 = 3，客服占 2）。组件优先按页面栈推断选中项。
 onShow(() => {
   uni.setStorageSync('tabbar_selected', 3)
+
+  // 首页的分类横滚和搜索框用 storage 传参：switchTab 会静默丢掉 url 上的
+  // query，navigateTo 又跳不到 tabBar 页，只剩这一条路。
+  //
+  // 必须写在 onShow 而不是 onLoad：从 tabBar 切回来时页面还在页面栈上，
+  // onLoad 不会再触发。而读完必须立刻删，否则用户之后每次切回商品页都会被
+  // 同一个条件再筛一遍，且没有任何办法把它去掉。
+  const pendingCat = uni.getStorageSync('products_pending_category')
+  const pendingKw = uni.getStorageSync('products_pending_keyword')
+
+  if (pendingCat || pendingKw) {
+    if (pendingCat) {
+      uni.removeStorageSync('products_pending_category')
+      activeCategoryId.value = pendingCat
+    }
+    if (pendingKw) {
+      uni.removeStorageSync('products_pending_keyword')
+      keyword.value = pendingKw
+    }
+    loadProducts(true)
+  }
 })
 
-onLoad((options: any) => {
-  if (options?.category_id) {
-    activeCategoryId.value = Number(options.category_id)
-  }
-  if (options?.keyword) {
-    keyword.value = options.keyword
-  }
-  if (options?.age_range) {
-    const idx = ageRanges.indexOf(options.age_range)
-    if (idx > 0) ageFilterIndex.value = idx
-  }
-
+onLoad(() => {
   loadCategories()
   loadProducts(true)
 })
@@ -285,167 +333,129 @@ onReachBottom(() => {
 </script>
 
 <style scoped>
-.products-page {
+.page {
   min-height: 100vh;
-  background: #FFF8F0;
-  font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
+  background: var(--bg-primary);
 }
 
-/* ── Search ──────────────────────────────────────────── */
-.search-wrap {
-  padding: 20rpx 24rpx;
-  background: #FFFFFF;
-}
-
-/* ── Category tabs ───────────────────────────────────── */
-.cat-section {
-  background: #FFFFFF;
-  padding-bottom: 16rpx;
-  border-bottom: 1px solid #f0e0d0;
-}
-
-.cat-scroll {
+/* ── 分类横滚 ─────────────────────────────────────────── */
+.cat {
+  width: 100%;
   white-space: nowrap;
 }
 
-.cat-list {
-  display: flex;
-  flex-direction: row;
-  padding: 0 24rpx;
-  gap: 12rpx;
+/* 内层 inline-flex + 首尾 padding，让最后一个分类能滑出屏幕边缘 ——
+   静止时就露出半截，是「还能往右滑」的天然提示（同首页横滑区）。 */
+.cat__inner {
+  display: inline-flex;
+  gap: var(--space-xl);
+  padding: var(--space-lg);
 }
 
-.cat-pill {
-  flex-shrink: 0;
-  display: inline-block;
-  padding: 8rpx 24rpx;
-  font-size: 26rpx;
-  color: #7a6a5a;
-  white-space: nowrap;
-  position: relative;
-}
-
-.cat-pill.active {
-  color: #e16531;
-  font-weight: 600;
-}
-
-.cat-pill.active::after {
-  content: '';
-  position: absolute;
-  bottom: -2rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40rpx;
-  height: 4rpx;
-  border-radius: 2px;
-  background: #e16531;
-}
-
-/* ── Filter bar ──────────────────────────────────────── */
-.filter-bar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-around;
-  background: #FFFFFF;
-  padding: 16rpx 24rpx;
-  border-bottom: 1px solid #f0e0d0;
-}
-
-.filter-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6rpx;
-  font-size: 26rpx;
-  color: #7a6a5a;
-  padding: 4rpx 8rpx;
-}
-
-.check {
-  font-size: 26rpx;
-  color: #b0a090;
-}
-
-.check--active {
-  color: #e16531;
-  font-weight: 600;
-}
-
-/* ── Error state ─────────────────────────────────────── */
-.error-state {
+.cat__item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 120rpx 40rpx;
+  flex-shrink: 0;
 }
 
-.error-circle {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  background: #e16531;
+.cat__label {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+}
+
+.cat__label--active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cat__underline {
+  width: 32rpx;
+  height: 4rpx;
+  border-radius: 2rpx;
+  background: var(--color-primary);
+  margin-top: var(--space-xs);
+}
+
+/* ── 排序条 ───────────────────────────────────────────── */
+.sort {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 24rpx;
+  justify-content: space-around;
+  padding: var(--space-lg);
+  background: var(--bg-white);
 }
 
-.error-circle-icon {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-
-.error-text {
-  font-size: 28rpx;
-  color: #7a6a5a;
-  text-align: center;
-  margin-bottom: 32rpx;
-  line-height: 1.5;
-}
-
-.error-retry {
-  background: #e16531;
-  border-radius: 50px;
-  padding: 14px 48px;
-}
-
-.error-retry-text {
-  font-size: 28rpx;
-  color: #FFFFFF;
-  font-weight: 500;
-}
-
-/* ── Product grid ────────────────────────────────────── */
-.product-grid {
+.sort__item {
   display: flex;
-  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.sort__label {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+}
+
+.sort__label--active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sort__arrow--asc {
+  transform: rotate(180deg);
+}
+
+/* ── 筛选行 ───────────────────────────────────────────── */
+.filter {
+  background: var(--bg-white);
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.filter__group {
+  display: flex;
   flex-wrap: wrap;
-  padding: 20rpx;
-  gap: 20rpx;
+  gap: var(--space-sm);
 }
 
-.grid-card {
-  width: calc(50% - 10rpx);
+.chip {
+  padding: var(--space-2xs) var(--space-base);
+  border-radius: var(--radius-pill);
+  background: var(--bg-primary);
+  border: 1rpx solid var(--border-light);
 }
 
-/* ── Load more ───────────────────────────────────────── */
-.load-more {
+.chip--active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+}
+
+.chip__text {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.chip--active .chip__text {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── 商品网格 ─────────────────────────────────────────── */
+.grid {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30rpx 0 40rpx;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-lg);
 }
 
-.load-more-text {
-  font-size: 26rpx;
-  color: #7a6a5a;
+.grid__item {
+  width: calc((100% - var(--space-md)) / 2);
 }
 
-.load-more-text--end {
-  color: #b0a090;
+.list-foot {
+  text-align: center;
+  padding: var(--space-lg);
+  font-size: var(--font-sm);
+  color: var(--text-muted);
 }
 </style>
