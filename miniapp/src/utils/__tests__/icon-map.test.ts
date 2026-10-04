@@ -125,8 +125,14 @@ describe('icon-map 覆盖度', () => {
         if (!text.includes('AppIcon')) continue
 
         // ① <AppIcon name="xxx" /> —— 静态属性
-        //    （:name="expr" 是动态绑定，值来自本映射表，上面已覆盖）
-        for (const m of text.matchAll(/<AppIcon\b[^>]*?\bname="([^"]+)"/g)) {
+        //    （:name="expr" 是动态绑定，值来自数据数组，由 ② 覆盖）
+        //
+        //    `(?<![:\w-])` 是必需的，不是保险：`\b` 在 `:name="item.icon"`
+        //    里也会断言成功（`:` 和 `n` 之间就是词边界），于是把
+        //    `item.icon` 当成图标名报出来。Task 6 的三个组件第一次用
+        //    `:name="item.icon"` 时，这条用例就是这样误报的。
+        //    多排除一个 `-` 是为了不让 `icon-name="…"` 之类也中招。
+        for (const m of text.matchAll(/<AppIcon\b[^>]*?(?<![:\w-])name="([^"]+)"/g)) {
           if (!available.has(m[1])) bad.push(`${full}: <AppIcon name="${m[1]}">`)
         }
 
