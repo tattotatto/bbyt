@@ -67,18 +67,21 @@ const props = withDefaults(defineProps<Props>(), {
 
 <style scoped>
 .page-loading {
-  background: #FFF8F0;
+  background: var(--bg-primary);
   padding: 24rpx;
   min-height: 100vh;
   font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
 /* Skeleton base */
+/* 底色用暖调 token（--bg-muted），不是纯灰。这里必须保留渐变 ——
+   shimmer 动画靠 background-position 扫过渐变才有流光效果，压成
+   单色就没有动画了。sheen 用更亮的 --bg-secondary，两者都是暖调。 */
 .skeleton {
-  background: linear-gradient(90deg, #f0e0d0 25%, #f5ebe0 50%, #f0e0d0 75%);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-secondary) 50%, var(--bg-muted) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .skeleton--text {
@@ -104,12 +107,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 /* Card skeleton */
 .page-loading__card {
-  background: #fff;
-  border-radius: 20px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
   height: 280rpx;
   margin-bottom: 24rpx;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-card);
 }
 
 .page-loading__card-img {
@@ -126,18 +129,18 @@ const props = withDefaults(defineProps<Props>(), {
 .page-loading__row {
   display: flex;
   align-items: center;
-  background: #fff;
-  border-radius: 12px;
+  background: var(--bg-white);
+  border-radius: var(--radius-md);
   height: 100rpx;
   padding: 0 20rpx;
   margin-bottom: 16rpx;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-card);
 }
 
 .page-loading__row-avatar {
   width: 64rpx;
   height: 64rpx;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   flex-shrink: 0;
   margin-right: 16rpx;
 }
@@ -158,7 +161,7 @@ const props = withDefaults(defineProps<Props>(), {
 .page-loading__detail-img {
   width: 100%;
   height: 400rpx;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   margin-bottom: 32rpx;
 }
 
@@ -174,16 +177,16 @@ const props = withDefaults(defineProps<Props>(), {
 .page-loading__spinner {
   width: 64rpx;
   height: 64rpx;
-  border: 4rpx solid #f0e0d0;
-  border-top-color: #FF7B7B;
-  border-radius: 50%;
+  border: 4rpx solid var(--bg-muted);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-circle);
   animation: spin 0.8s linear infinite;
 }
 
 .page-loading__text {
   margin-top: 24rpx;
-  font-size: 28rpx;
-  color: #7a6a5a;
+  font-size: var(--font-base);
+  color: var(--text-secondary);
 }
 
 /* Animations */

@@ -1,22 +1,25 @@
 <template>
   <view class="product-card" @tap="handleClick">
     <image
+      v-if="coverImage"
       class="product-card__image"
-      :src="product.images && product.images.length ? product.images[0] : ''"
+      :src="coverImage"
       mode="aspectFill"
     />
+    <!-- 无图兜底：原来是 <image src=""> —— 商品没图时这里就是一块空白。
+         现在给一个照片图标占位，至少说明「这里本该有张图」。 -->
+    <view v-else class="product-card__image product-card__image--placeholder">
+      <AppIcon name="photo" :size="72" tone="muted" />
+    </view>
     <view class="product-card__body">
       <text class="product-card__name">{{ product.name }}</text>
 
       <view class="product-card__price-row">
-        <text class="product-card__price">
-          <template v-if="(product.price_min ?? 0) === (product.price_max ?? 0)">
-            ¥{{ formatPrice(product.price_min) }}
-          </template>
-          <template v-else>
-            ¥{{ formatPrice(product.price_min) }} - ¥{{ formatPrice(product.price_max) }}
-          </template>
-        </text>
+        <view class="product-card__price">
+          <text class="product-card__currency">¥</text>
+          <text class="product-card__amount">{{ priceText }}</text>
+        </view>
+        <text v-if="moq > 0" class="product-card__moq">{{ moq }}件起批</text>
       </view>
 
       <view class="product-card__bottom">
@@ -49,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppIcon from './AppIcon.vue'
 import AgeTag from './AgeTag.vue'
 import CertBadge from './CertBadge.vue'
 import type { SafetyCertification } from '../api/products'
@@ -62,6 +66,12 @@ interface Product {
   price_max: number | null
   stock: number | null
   safety_certifications: SafetyCertification[]
+  /**
+   * 最低起批量。后端 ProductListOut 里有这个字段（models/product.py
+   * 的 min_order_qty，默认 10），商品列表接口返回的就是它。
+   * 写成可选是为了不让调用方被迫补字段 —— 不传就不显示「xx件起批」。
+   */
+  min_order_qty?: number
 }
 
 interface Props {
@@ -81,6 +91,25 @@ const firstTwoCerts = computed(() => {
   return (props.product.safety_certifications || []).slice(0, 2)
 })
 
+const coverImage = computed(() => {
+  const images = props.product.images || []
+  return images.length ? images[0] : ''
+})
+
+/** 起批量。缺字段或为 0 时不显示，避免出现「0件起批」。 */
+const moq = computed(() => props.product.min_order_qty ?? 0)
+
+/**
+ * 价格文案。与改动前逐字一致（'¥12.00' / '¥12.00 - ¥15.00'）——
+ * 只是把开头的「¥」拆成独立的 text，好让它单独用小一号字。
+ */
+const priceText = computed(() => {
+  const min = formatPrice(props.product.price_min)
+  const max = formatPrice(props.product.price_max)
+  if ((props.product.price_min ?? 0) === (props.product.price_max ?? 0)) return min
+  return `${min} - ¥${max}`
+})
+
 function formatPrice(price: number | null): string {
   return (price ?? 0).toFixed(2)
 }
@@ -92,9 +121,9 @@ function handleClick() {
 
 <style scoped>
 .product-card {
-  border-radius: 20px;
-  background: #ffffff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-lg);
+  background: var(--bg-white);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
 }
@@ -102,6 +131,13 @@ function handleClick() {
 .product-card__image {
   width: 100%;
   height: 200px;
+}
+
+.product-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-muted);
 }
 
 .product-card__body {
@@ -123,12 +159,31 @@ function handleClick() {
 
 .product-card__price-row {
   margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .product-card__price {
-  font-size: 32rpx;
+  display: flex;
+  align-items: baseline;
+  color: var(--color-primary);
+}
+
+/* 「¥」小一号，让数字本身更突出 */
+.product-card__currency {
+  font-size: var(--font-sm);
   font-weight: 700;
-  color: #FF7B7B;
+}
+
+.product-card__amount {
+  font-size: var(--font-xl);
+  font-weight: 700;
+}
+
+.product-card__moq {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
 }
 
 .product-card__bottom {
@@ -151,7 +206,7 @@ function handleClick() {
 }
 
 .product-card__stock--low {
-  color: #FF7B7B;
+  color: var(--color-primary);
 }
 
 .product-card__stock--good {
