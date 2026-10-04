@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -285,5 +285,105 @@ describe('自定义 tabBar 与全局定义的数值没有漂移', () => {
         `wxml 里没有 AppIcon 的 ${tone} 色 ${tones.get(tone)}，两边漂了`,
       ).toBe(true)
     }
+  })
+})
+
+// ── 跳转方式 ──────────────────────────────────────────────────────────────
+
+/**
+ * 遍历 src 下的 .vue / .ts。
+ *
+ * 跳过 __tests__：本文件自己的正则字面量和断言消息里就写着这些 URL，
+ * 扫自己必然自伤（icon-map.test.ts 的源码扫描也是这么处理的）。
+ */
+function collectSources(dir: string): string[] {
+  const out: string[] = []
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      if (entry === '__tests__') continue
+      out.push(...collectSources(full))
+      continue
+    }
+    if (full.endsWith('.vue') || full.endsWith('.ts')) out.push(full)
+  }
+  return out
+}
+
+/** '.../src/pages/home/index.vue' -> 'pages/home/index.vue' */
+const rel = (f: string) => f.slice(ROOT.length + 1)
+
+/** 去掉 query，只留路径 —— 路由限制只看路径部分 */
+const pathOf = (url: string) => url.split('?')[0]
+
+// url 的两种写法：`{ url: '...' }` 与 `uni.navigateTo('...')`。
+// `[^}]*?` 遇到模板字符串里的 `${...}` 会提前在 `}` 处停住，但 `url:`
+// 总在 `${` 之前，所以仍然取得到（首页的 `/pages/products/index?keyword=${…}` 就是这种）。
+const CALL_OBJECT = /uni\.(?:navigateTo|redirectTo)\s*\(\s*\{[^}]*?url\s*:\s*[`'"]([^`'"]+)/
+const CALL_STRING = /uni\.(?:navigateTo|redirectTo)\s*\(\s*[`'"]([^`'"]+)/
+const CALL_SWITCH = /uni\.switchTab\s*\(\s*\{[^}]*?url\s*:\s*[`'"]([^`'"]+)/
+
+/**
+ * 微信两条硬规则，写错都是**静默失败** —— 点了没反应，控制台之外没有任何提示：
+ *
+ *   navigateTo / redirectTo → tabBar 页：✗（跳不过去）
+ *   switchTab              → 非 tabBar 页：✗（同样跳不过去）
+ *
+ * 写错不会有编译错误，也没有别的测试会红。旧首页有 5 处 navigateTo 指向
+ * tabBar 页（分类、搜索、两个「查看更多」），一直是点不动的哑按钮；
+ * 改版把分类横滚和「查看更多」做成了主入口，这个 bug 会立刻浮出来。
+ */
+describe('tabBar 页与普通页的跳转方式', () => {
+  function scan(): { bad: string[]; calls: number; tabs: Set<string> } {
+    const { tabBar } = readSources()
+    const tabs = new Set((tabBar!.list ?? []).map((t) => norm(t.pagePath)))
+    const bad: string[] = []
+    let calls = 0
+
+    for (const file of collectSources(ROOT)) {
+      const text = readIfExists(file)
+
+      for (const re of [CALL_OBJECT, CALL_STRING]) {
+        for (const m of text.matchAll(new RegExp(re, 'g'))) {
+          calls++
+          const p = norm(pathOf(m[1]))
+          if (tabs.has(p)) {
+            bad.push(`${rel(file)}: navigateTo/redirectTo → ${p}（这是 tabBar 页，跳不过去）`)
+          }
+        }
+      }
+
+      for (const m of text.matchAll(new RegExp(CALL_SWITCH, 'g'))) {
+        calls++
+        const p = norm(pathOf(m[1]))
+        if (!tabs.has(p)) {
+          bad.push(`${rel(file)}: switchTab → ${p}（这不是 tabBar 页，跳不过去）`)
+        }
+      }
+    }
+
+    return { bad, calls, tabs }
+  }
+
+  it('没有 navigateTo / redirectTo 指向 tabBar 页', () => {
+    const forwards = scan().bad.filter((m) => m.includes('navigateTo'))
+    expect(
+      forwards,
+      '这些调用跳不过去，真机上点了没反应：\n' + forwards.join('\n'),
+    ).toEqual([])
+  })
+
+  it('没有 switchTab 指向非 tabBar 页', () => {
+    const back = scan().bad.filter((m) => m.includes('switchTab'))
+    expect(
+      back,
+      'switchTab 只能跳 tabBar 页，其余一律失败：\n' + back.join('\n'),
+    ).toEqual([])
+  })
+
+  it('扫描本身抓到了调用点，不是空转', () => {
+    // 源码里要是改用了 wx.* 前缀，上面两条会一起变成空断言 —— 这条拦住它。
+    const { calls } = scan()
+    expect(calls, '一个跳转调用都没扫到，说明正则或前缀写法变了').toBeGreaterThanOrEqual(20)
   })
 })

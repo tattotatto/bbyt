@@ -32,7 +32,7 @@
         class="detail-swiper"
         indicator-dots
         indicator-color="rgba(255,255,255,0.4)"
-        indicator-active-color="#FF7B7B"
+        indicator-active-color="#e16531"
         circular
       >
         <swiper-item v-for="(img, idx) in product.images" :key="idx">
@@ -373,7 +373,9 @@ function buyNow() {
 
 // ── Navigation ─────────────────────────────────────────
 function goToCart() {
-  uni.switchTab({ url: '/pages/cart/index' })
+  // 购物车不是 tabBar 页（5 个 tab 是首页/案例/客服/商品/我的），
+  // switchTab 只跳 tabBar 页，写在这里等于按钮点了没反应。
+  uni.navigateTo({ url: '/pages/cart/index' })
 }
 
 function goBack() {
@@ -424,7 +426,7 @@ onLoad((options?: Record<string, string>) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #FFA5A5, #FF7B7B);
+  background: linear-gradient(135deg, #f4a97e, #e16531);
 }
 
 .swiper-fallback-text {
@@ -453,7 +455,7 @@ onLoad((options?: Record<string, string>) => {
 .price-text {
   font-size: 40rpx;
   font-weight: 700;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .price-text--na {
@@ -468,7 +470,7 @@ onLoad((options?: Record<string, string>) => {
 
 .category-text {
   font-size: 24rpx;
-  color: #FF7B7B;
+  color: #e16531;
   background: #FFF0F0;
   padding: 4rpx 16rpx;
   border-radius: 8px;
@@ -568,9 +570,9 @@ onLoad((options?: Record<string, string>) => {
 }
 
 .spec-pill.active {
-  border-color: #FF7B7B;
+  border-color: #e16531;
   background: #FFF0F0;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ── Quantity stepper ────────────────────────────────── */
@@ -652,7 +654,7 @@ onLoad((options?: Record<string, string>) => {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
-  background: #FF7B7B;
+  background: #e16531;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -674,7 +676,7 @@ onLoad((options?: Record<string, string>) => {
 }
 
 .error-retry {
-  background: #FF7B7B;
+  background: #e16531;
   border-radius: 50px;
   padding: 14px 48px;
 }
@@ -745,7 +747,7 @@ onLoad((options?: Record<string, string>) => {
   min-width: 32rpx;
   height: 32rpx;
   border-radius: 50%;
-  background: #FF7B7B;
+  background: #e16531;
   color: #FFFFFF;
   font-size: 20rpx;
   line-height: 32rpx;
@@ -782,7 +784,7 @@ onLoad((options?: Record<string, string>) => {
   flex: 1;
   height: 80rpx;
   border-radius: 50px;
-  background: #FF7B7B;
+  background: #e16531;
   display: flex;
   align-items: center;
   justify-content: center;

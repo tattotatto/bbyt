@@ -1,206 +1,140 @@
 <template>
-  <view class="home-page has-custom-tabbar">
-    <!-- ================================================================ -->
-    <!--  STATE: LOADING -->
-    <!-- ================================================================ -->
-    <template v-if="pageState === 'loading'">
-      <view class="home-nav home-nav--loading" :style="{ paddingTop: statusBarHeight + 'px' }">
-        <view class="home-nav__inner">
-          <text class="home-nav__brand-icon">🧸</text>
-          <text class="home-nav__title">蓓贝婴童</text>
-          <view style="width:120rpx" />
-        </view>
-      </view>
-      <PageLoading type="card" :count="4" />
-    </template>
+  <view class="page has-custom-tabbar">
+    <!-- ① 品牌头图。状态栏高度由头图自己扛（Task 5），页面不用管 -->
+    <BrandHero
+      title="蓓贝婴童"
+      slogan="源头工厂 · 一件代发"
+      show-login
+      show-search
+      @login="onLogin"
+      @search="onHeroSearch"
+    />
 
-    <!-- ================================================================ -->
-    <!--  STATE: ERROR (full page) -->
-    <!-- ================================================================ -->
-    <template v-else-if="pageState === 'error'">
-      <EmptyState
-        icon="⚠️"
-        title="加载失败"
-        description="网络好像开小差了，请检查网络后重试"
-        :showButton="true"
-        buttonText="重新加载"
-        @buttonClick="retryAll"
+    <!-- ② 上叠白卡：入口 / 分类 / 权益 -->
+    <SurfaceCard overlap>
+      <EntryGrid :items="ENTRY_ITEMS" @select="onEntrySelect" />
+
+      <!-- 分类没加载出来时整块不渲染：否则两条分隔线夹着一个空行 -->
+      <template v-if="categoryEntries.length || sectionErrors.categories">
+        <view class="home__divider" />
+        <CircleEntryRow
+          v-if="categoryEntries.length"
+          :items="categoryEntries"
+          @select="onCategorySelect"
+        />
+        <view v-else class="home__section-error" @tap="fetchCategories()">
+          <AppIcon name="reload" :size="30" tone="muted" />
+          <text class="home__section-error-text">分类加载失败，点击重试</text>
+        </view>
+      </template>
+
+      <view class="home__divider" />
+
+      <BenefitCard
+        :main="BENEFIT_MAIN"
+        :side="BENEFIT_SIDE"
+        @main-tap="goToMember"
+        @side-tap="onBenefitSide"
       />
-    </template>
+    </SurfaceCard>
 
-    <!-- ================================================================ -->
-    <!--  STATE: CONTENT -->
-    <!-- ================================================================ -->
+    <!-- 骨架屏放在白卡正下方（而不是所有分区之后）：分区是数据驱动的，
+         等 loading 走完再渲染，骨架才不会被顶到首屏以外去。 -->
+    <PageLoading v-if="pageState === 'loading'" />
+
+    <EmptyState
+      v-else-if="pageState === 'error'"
+      title="加载失败"
+      description="检查网络后点击重试"
+      :show-button="true"
+      button-text="重新加载"
+      @button-click="retryAll"
+    />
+
     <template v-else>
-      <!-- 1. Custom Navigation Bar -->
-      <view class="home-nav" :style="{ paddingTop: statusBarHeight + 'px' }">
-        <view class="home-nav__inner">
-          <view class="home-nav__left">
-            <text class="home-nav__brand-icon">🧸</text>
-          </view>
-          <text class="home-nav__title">蓓贝婴童</text>
-          <view class="home-nav__right">
-            <view class="home-nav__icon" @tap="goToSearch">
-              <text class="home-nav__icon-text">🔍</text>
-            </view>
-            <view class="home-nav__icon home-nav__cart" @tap="onCartTap">
-              <text class="home-nav__icon-text">🛒</text>
-              <text v-if="cartStore.totalCount > 0" class="home-nav__badge">
-                {{ cartStore.totalCount > 99 ? '99+' : cartStore.totalCount }}
-              </text>
-            </view>
+      <!-- ③ 蓓贝推荐 -->
+      <SectionHeader title="蓓贝推荐" more="查看更多" @more="goToMoreProducts" />
+      <view
+        v-if="sectionErrors.recommend"
+        class="home__section-error"
+        @tap="fetchRecommendProducts()"
+      >
+        <AppIcon name="reload" :size="30" tone="muted" />
+        <text class="home__section-error-text">推荐商品加载失败，点击重试</text>
+      </view>
+      <scroll-view v-else class="home__scroll" scroll-x :show-scrollbar="false" enhanced>
+        <view class="home__scroll-inner">
+          <view v-for="p in recommendProducts" :key="p.id" class="home__scroll-item">
+            <ProductCard :product="p" @click="goToProduct" />
           </view>
         </view>
-      </view>
+      </scroll-view>
 
-      <!-- 2. Search Bar -->
-      <view class="home-search">
-        <SearchBar
-          v-model="searchKeyword"
-          placeholder="搜索儿童产品..."
-          @search="onSearch"
+      <!-- ④ 设计案例：横滑横图卡 -->
+      <SectionHeader title="设计案例" more="查看更多" @more="goToMoreCases" />
+      <view
+        v-if="sectionErrors.cases"
+        class="home__section-error"
+        @tap="fetchCases()"
+      >
+        <AppIcon name="reload" :size="30" tone="muted" />
+        <text class="home__section-error-text">设计案例加载失败，点击重试</text>
+      </view>
+      <scroll-view v-else class="home__scroll" scroll-x :show-scrollbar="false" enhanced>
+        <view class="home__scroll-inner">
+          <BannerCard
+            v-for="c in caseItems"
+            :key="c.id"
+            :title="c.title"
+            :subtitle="[c.store_area_range, (c.style_tags || [])[0]].filter(Boolean).join(' · ')"
+            :image="c.images?.[0]"
+            width="520rpx"
+            @tap="goToCase(c.id)"
+          />
+        </view>
+      </scroll-view>
+
+      <!-- ⑤ 品牌活动：满宽横图卡 -->
+      <SectionHeader title="品牌活动" />
+      <view class="home__banners">
+        <BannerCard
+          v-for="promo in promotions"
+          :key="promo.id"
+          :title="promo.title"
+          :subtitle="promoSubtitle(promo)"
+          action="立即参与"
+          @tap="onPromotionTap"
         />
       </view>
 
-      <!-- 3. Banner Carousel -->
-      <view v-if="banners.length > 0" class="home-banners">
-        <swiper
-          class="home-banners__swiper"
-          :indicator-dots="true"
-          :autoplay="true"
-          :interval="4000"
-          :duration="500"
-          :circular="true"
-          indicator-color="rgba(255,255,255,0.5)"
-          indicator-active-color="#e16531"
-        >
-          <swiper-item v-for="(banner, index) in banners" :key="index">
-            <view
-              class="home-banner"
-              :style="{ background: banner.gradient }"
-            >
-              <view class="home-banner__content">
-                <text class="home-banner__emoji">{{ banner.emoji }}</text>
-                <text class="home-banner__title">{{ banner.title }}</text>
-                <text class="home-banner__desc">{{ banner.desc }}</text>
-              </view>
-            </view>
-          </swiper-item>
-        </swiper>
+      <!-- ⑥ 热门商品 2 列瀑布流 -->
+      <SectionHeader title="热门商品" />
+      <view
+        v-if="sectionErrors.hot"
+        class="home__section-error"
+        @tap="fetchHotProducts(true)"
+      >
+        <AppIcon name="reload" :size="30" tone="muted" />
+        <text class="home__section-error-text">热门商品加载失败，点击重试</text>
       </view>
-
-      <!-- 4. Category Quick Nav -->
-      <view v-if="categories.length > 0" class="home-categories">
-        <view
-          v-for="(cat, idx) in categories"
-          :key="cat.id"
-          class="home-category"
-          @tap="goToCategory(cat)"
-        >
-          <view
-            class="home-category__icon"
-            :style="{ background: categoryBgColor(idx) }"
-          >
-            <text class="home-category__emoji">{{ cat.icon || '📦' }}</text>
-          </view>
-          <text class="home-category__label">{{ cat.name }}</text>
-        </view>
-      </view>
-      <!-- Category error -->
-      <view v-else-if="sectionErrors.categories" class="home-section-error">
-        <text class="home-section-error__text">分类加载失败</text>
-        <text class="home-section-error__retry" @tap="fetchCategories">点击重试</text>
-      </view>
-
-      <!-- 5. 「小暖推荐」Section — Horizontal Scroll -->
-      <view v-if="recommendProducts.length > 0" class="home-section">
-        <view class="home-section__header">
-          <view class="home-section__left">
-            <view class="home-section__bar" />
-            <text class="home-section__title">小暖推荐</text>
-          </view>
-          <text class="home-section__more" @tap="goToMoreProducts">查看更多 ›</text>
-        </view>
-        <scroll-view
-          class="home-recommend-scroll"
-          :scroll-x="true"
-          :show-scrollbar="false"
-        >
-          <view class="home-recommend-list">
-            <ProductCard
-              v-for="product in recommendProducts"
-              :key="product.id"
-              :product="product"
-              class="home-recommend-card"
-              @click="goToProduct"
-            />
-          </view>
-        </scroll-view>
-      </view>
-      <!-- Recommend error -->
-      <view v-else-if="sectionErrors.recommend" class="home-section-error">
-        <text class="home-section-error__text">推荐商品加载失败</text>
-        <text class="home-section-error__retry" @tap="fetchRecommendProducts">点击重试</text>
-      </view>
-
-      <!-- 6. 「设计案例」Section — 2-col Waterfall -->
-      <view v-if="caseItems.length > 0" class="home-section">
-        <view class="home-section__header">
-          <view class="home-section__left">
-            <view class="home-section__bar" />
-            <text class="home-section__title">设计案例</text>
-          </view>
-          <text class="home-section__more" @tap="goToMoreCases">查看更多 ›</text>
-        </view>
-        <view class="home-cases-grid">
-          <CaseCard
-            v-for="caseItem in caseItems"
-            :key="caseItem.id"
-            :caseData="caseItem"
-            class="home-case-card"
-            @click="goToCase"
-          />
-        </view>
-      </view>
-      <!-- Cases error -->
-      <view v-else-if="sectionErrors.cases" class="home-section-error">
-        <text class="home-section-error__text">设计案例加载失败</text>
-        <text class="home-section-error__retry" @tap="fetchCases">点击重试</text>
-      </view>
-
-      <!-- 7. 「热门商品」Section — 2-col Grid with Load More -->
-      <view v-if="hotProducts.length > 0" class="home-section">
-        <view class="home-section__header">
-          <view class="home-section__left">
-            <view class="home-section__bar" />
-            <text class="home-section__title">热门商品</text>
-          </view>
-        </view>
-        <view class="home-hot-grid">
+      <template v-else>
+        <view class="home__grid">
           <ProductCard
-            v-for="product in hotProducts"
-            :key="product.id"
-            :product="product"
-            class="home-hot-card"
+            v-for="p in hotProducts"
+            :key="p.id"
+            class="home__grid-item"
+            :product="p"
             @click="goToProduct"
           />
         </view>
-        <!-- Load more states -->
-        <view v-if="hotLoadingMore" class="home-load-more">
-          <text class="home-load-more__text">加载中...</text>
-        </view>
-        <view v-else-if="hotNoMore" class="home-load-more">
-          <text class="home-load-more__text home-load-more__text--muted">— 已经到底了 —</text>
-        </view>
-      </view>
-      <!-- Hot products error -->
-      <view v-else-if="sectionErrors.hot" class="home-section-error">
-        <text class="home-section-error__text">热门商品加载失败</text>
-        <text class="home-section-error__retry" @tap="fetchHotProducts">点击重试</text>
-      </view>
-
-      <!-- Bottom Safe Area -->
-      <view class="home-safe-bottom" :style="{ height: safeBottom + 'px' }" />
+        <EmptyState
+          v-if="!hotLoadingMore && hotProducts.length === 0"
+          title="暂无商品"
+          description="换个分类看看，或联系客服获取最新货源"
+        />
+        <view v-if="hotLoadingMore" class="home__loading-more">加载中…</view>
+        <view v-if="hotNoMore && hotProducts.length" class="home__loading-more">已经到底了</view>
+      </template>
     </template>
   </view>
 </template>
@@ -208,32 +142,37 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import SearchBar from '../../components/SearchBar.vue'
+import AppIcon from '../../components/AppIcon.vue'
+import BrandHero from '../../components/BrandHero.vue'
+import SurfaceCard from '../../components/SurfaceCard.vue'
+import SectionHeader from '../../components/SectionHeader.vue'
+import EntryGrid from '../../components/EntryGrid.vue'
+import CircleEntryRow from '../../components/CircleEntryRow.vue'
+import BenefitCard from '../../components/BenefitCard.vue'
+import BannerCard from '../../components/BannerCard.vue'
 import ProductCard from '../../components/ProductCard.vue'
-import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { useCartStore } from '../../stores/cart'
 import { useAppStore } from '../../stores/app'
-import {
-  getCategories,
-  getHotProducts,
-  getNewProducts,
-  getProductList
-} from '../../api/products'
+import { getCategories, getNewProducts, getProductList } from '../../api/products'
 import { getCaseList } from '../../api/cases'
-import type { Product, Category as CategoryType } from '../../api/products'
+import http from '../../api/request'
+import type { Category as CategoryType, ProductListItem } from '../../api/products'
 import type { DesignCase } from '../../api/cases'
 import { PAGE_SIZE } from '../../utils/constants'
+import { applyFallback } from '../../mock/fallback'
+import {
+  DEMO_CASES,
+  DEMO_CATEGORIES,
+  DEMO_PRODUCTS,
+  DEMO_PROMOTIONS,
+} from '../../mock/demo-data'
 
-const cartStore = useCartStore()
 const appStore = useAppStore()
 
 // ── Init app store ──────────────────────────────────────────────────────────
+// 首页是小程序的首屏，状态栏高度得在这里就备好 —— BrandHero 直接读它。
 appStore.init()
-
-const statusBarHeight = computed(() => appStore.statusBarHeight)
-const safeBottom = computed(() => Math.max(appStore.safeAreaBottom, 20))
 
 // ── Page State ──────────────────────────────────────────────────────────────
 type PageState = 'loading' | 'error' | 'content'
@@ -244,123 +183,147 @@ const sectionErrors = reactive({
   categories: false,
   recommend: false,
   cases: false,
-  hot: false
+  hot: false,
 })
 
-// ── Search ──────────────────────────────────────────────────────────────────
-const searchKeyword = ref('')
-
-function onSearch(keyword: string) {
-  uni.navigateTo({
-    url: `/pages/products/index?keyword=${encodeURIComponent(keyword)}`
-  })
-}
-
-function goToSearch() {
-  uni.navigateTo({ url: '/pages/products/index?focus=1' })
-}
-
-function onCartTap() {
-  uni.showToast({ title: '购物车功能开发中', icon: 'none' })
-}
-
-// ── Banners ─────────────────────────────────────────────────────────────────
-const BANNER_GRADIENTS = [
-  'linear-gradient(135deg, #e16531 0%, #f5b28f 100%)',
-  'linear-gradient(135deg, #7EC8E3 0%, #A8DFF0 100%)',
-  'linear-gradient(135deg, #A8D8B9 0%, #C8E8D4 100%)',
-  'linear-gradient(135deg, #FFB347 0%, #FFCC80 100%)',
-  'linear-gradient(135deg, #B8A8D8 0%, #D4C8E8 100%)'
+// ── 固定文案（不依赖后端） ──────────────────────────────────────────────
+const ENTRY_ITEMS = [
+  { icon: 'bag-fill', title: '一件代发', subtitle: '无起批压力' },
+  { icon: 'rmb-circle', title: '批量询价', subtitle: '量大更优' },
+  { icon: 'photo', title: '定制打样', subtitle: '专属 LOGO' },
 ]
-const BANNER_EMOJIS = ['🎁', '⚡', '🎨', '🌟', '💎']
 
-interface Banner {
-  gradient: string
-  emoji: string
-  title: string
-  desc: string
+const BENEFIT_MAIN = {
+  title: '会员权益',
+  desc: '等级越高折扣越低\n账期最长 60 天',
+  action: '查看权益',
 }
-
-const banners = ref<Banner[]>([])
-
-async function fetchBanners() {
-  try {
-    const res = await getHotProducts(5)
-    const products = res.data || []
-    banners.value = products.slice(0, 5).map((p, i) => ({
-      gradient: BANNER_GRADIENTS[i % BANNER_GRADIENTS.length],
-      emoji: BANNER_EMOJIS[i % BANNER_EMOJIS.length],
-      title: p.name,
-      desc: `${p.age_range || p.name || ''} · 爆款热销`
-    }))
-  } catch {
-    // Banner failure is non-critical; use fallback
-    banners.value = [
-      { gradient: BANNER_GRADIENTS[0], emoji: '🎁', title: '新品上架', desc: '探索最新儿童好物' },
-      { gradient: BANNER_GRADIENTS[1], emoji: '⚡', title: '限时特惠', desc: '精选好物限时折扣' },
-      { gradient: BANNER_GRADIENTS[2], emoji: '🎨', title: '设计灵感', desc: '打造温馨亲子空间' }
-    ]
-  }
-}
+const BENEFIT_SIDE = [
+  { icon: 'integral', title: '积分抽奖', desc: '即将上线' },
+  { icon: 'gift', title: '新品首发', desc: '优先订货' },
+]
 
 // ── Categories ──────────────────────────────────────────────────────────────
-const CATEGORY_BG_COLORS = ['#FFF0F0', '#F0F8FB', '#F2FAF5', '#FFFBE6']
-
 const categories = ref<CategoryType[]>([])
 
-function categoryBgColor(index: number): string {
-  return CATEGORY_BG_COLORS[index % CATEGORY_BG_COLORS.length]
-}
+// 后端 Category 的 icon 目前恒为 null，图标按索引轮换一组通用品类图标，
+// 比让所有分类共用一个图标更有信息量。
+const CATEGORY_ICONS = ['bag', 'coupon', 'home', 'photo', 'integral']
+
+const categoryEntries = computed(() =>
+  categories.value.map((c, i) => ({
+    id: c.id,
+    icon: CATEGORY_ICONS[i % CATEGORY_ICONS.length],
+    label: c.name,
+  })),
+)
 
 async function fetchCategories() {
   sectionErrors.categories = false
   try {
     const res = await getCategories()
-    categories.value = res.data || []
+    categories.value = applyFallback(res.data, DEMO_CATEGORIES)
   } catch {
     sectionErrors.categories = true
     categories.value = []
   }
 }
 
-function goToCategory(cat: CategoryType) {
-  uni.navigateTo({
-    url: `/pages/products/index?category_id=${cat.id}`
+function onEntrySelect(index: number) {
+  uni.showToast({ title: ENTRY_ITEMS[index].title, icon: 'none' })
+}
+
+function onCategorySelect(index: number) {
+  const cat = categoryEntries.value[index]
+  if (!cat) return
+  // /pages/products/index 是 tabBar 页，只能用 switchTab；而 switchTab 不支持
+  // query 传参，所以把 category_id 写进 storage，由商品页在 onShow 里取。
+  uni.setStorageSync('products_pending_category', cat.id)
+  uni.switchTab({ url: '/pages/products/index' })
+}
+
+function goToMember() {
+  uni.navigateTo({ url: '/pages/mine/member/index' })
+}
+
+function onBenefitSide(index: number) {
+  uni.showToast({
+    title: index === 0 ? '积分抽奖即将上线' : '新品首发敬请期待',
+    icon: 'none',
   })
 }
 
-// ── Recommend Products (Horizontal Scroll) ──────────────────────────────────
-const recommendProducts = ref<Product[]>([])
+// /pages/mine/index 同样是 tabBar 页
+function onLogin() {
+  uni.switchTab({ url: '/pages/mine/index' })
+}
+
+// 头图的搜索框带回关键词。同样只能 storage + switchTab。
+function onHeroSearch(kw: string) {
+  if (kw.trim()) uni.setStorageSync('products_pending_keyword', kw.trim())
+  uni.switchTab({ url: '/pages/products/index' })
+}
+
+// ── 蓓贝推荐（横滑） ────────────────────────────────────────────────────
+const recommendProducts = ref<ProductListItem[]>([])
 
 async function fetchRecommendProducts() {
   sectionErrors.recommend = false
   try {
     const res = await getNewProducts(10)
-    recommendProducts.value = res.data || []
+    // 空集合兜底；请求失败走 catch，保持空 -> 该分区显示重试，但不盖假数据
+    recommendProducts.value = applyFallback(res.data, DEMO_PRODUCTS)
   } catch {
     sectionErrors.recommend = true
     recommendProducts.value = []
   }
 }
 
-// ── Design Cases (2-col Waterfall) ──────────────────────────────────────────
+// ── 设计案例（横滑横图卡） ──────────────────────────────────────────────
 const caseItems = ref<DesignCase[]>([])
 
 async function fetchCases() {
   sectionErrors.cases = false
   try {
     const res = await getCaseList({ page: 1, page_size: 4 })
-    caseItems.value = res.data.items || []
+    // 分页形状是 items，不是 list —— 后端 PaginatedResponse 就是 items/total。
+    caseItems.value = applyFallback(res.data.items, DEMO_CASES)
   } catch {
     sectionErrors.cases = true
     caseItems.value = []
   }
 }
 
-// ── Hot Products (2-col Grid + Pagination) ──────────────────────────────────
-const hotProducts = ref<Product[]>([])
+// ── 品牌活动 ────────────────────────────────────────────────────────────
+const promotions = ref<typeof DEMO_PROMOTIONS>([])
+
+async function fetchPromotions() {
+  try {
+    const res: any = await http.get('/promotions/active')
+    promotions.value = applyFallback(res.data, DEMO_PROMOTIONS)
+  } catch {
+    promotions.value = []
+  }
+}
+
+/** rules 里的金额单位是分（见后端 models/promotion.py 的注释） */
+function promoSubtitle(promo: { type: string; rules: any }): string {
+  const r = promo.rules || {}
+  if (promo.type === 'full_reduction') {
+    return `满 ${Math.round(r.threshold / 100)} 减 ${Math.round(r.reduce / 100)}`
+  }
+  if (promo.type === 'discount') return `${(r.rate * 10).toFixed(1)} 折`
+  if (promo.type === 'flash_sale') return `限时价 ¥${(r.price / 100).toFixed(0)}`
+  return ''
+}
+
+function onPromotionTap() {
+  goToMoreProducts()
+}
+
+// ── 热门商品（2 列 + 触底加载） ─────────────────────────────────────────
+const hotProducts = ref<ProductListItem[]>([])
 const hotPage = ref(1)
-const hotTotal = ref(0)
 const hotLoadingMore = ref(false)
 const hotNoMore = ref(false)
 
@@ -378,15 +341,14 @@ async function fetchHotProducts(reset = true) {
     const res = await getProductList({
       page: hotPage.value,
       page_size: PAGE_SIZE,
-      sort: 'sales_desc'
+      sort: 'sales_desc',
     })
     const { items, total } = res.data
     if (reset) {
-      hotProducts.value = items || []
+      hotProducts.value = applyFallback(items, DEMO_PRODUCTS)
     } else {
       hotProducts.value.push(...(items || []))
     }
-    hotTotal.value = total
     hotNoMore.value = hotProducts.value.length >= total
   } catch {
     if (reset) {
@@ -410,11 +372,11 @@ async function loadAllData() {
   pageState.value = 'loading'
   try {
     await Promise.all([
-      fetchBanners(),
       fetchCategories(),
       fetchRecommendProducts(),
       fetchCases(),
-      fetchHotProducts(true)
+      fetchPromotions(),
+      fetchHotProducts(true),
     ])
     pageState.value = 'content'
   } catch {
@@ -435,17 +397,15 @@ onShow(() => {
 
 onLoad(() => {
   loadAllData()
-  // Fetch cart from backend for badge (no-op when not logged in)
-  cartStore.fetch()
 })
 
 onPullDownRefresh(() => {
   Promise.all([
-    fetchBanners(),
     fetchCategories(),
     fetchRecommendProducts(),
     fetchCases(),
-    fetchHotProducts(true)
+    fetchPromotions(),
+    fetchHotProducts(true),
   ]).finally(() => {
     uni.stopPullDownRefresh()
   })
@@ -464,345 +424,81 @@ function goToCase(id: string | number) {
   uni.navigateTo({ url: `/pages/cases/detail?id=${id}` })
 }
 
+// 这两个目标都是 tabBar 页，navigateTo 跳不过去（点了没反应），必须 switchTab。
 function goToMoreProducts() {
-  uni.navigateTo({ url: '/pages/products/index' })
+  uni.switchTab({ url: '/pages/products/index' })
 }
 
 function goToMoreCases() {
-  uni.navigateTo({ url: '/pages/cases/index' })
+  uni.switchTab({ url: '/pages/cases/index' })
 }
 </script>
 
 <style scoped>
-.home-page {
+.page {
   min-height: 100vh;
-  background: #FFF8F0;
-  font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
+  background: var(--bg-primary);
 }
 
-/* ========================================================================== */
-/*  CUSTOM NAVIGATION BAR                                                     */
-/* ========================================================================== */
-.home-nav {
-  background: #e16531;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.home__divider {
+  height: 1rpx;
+  background: var(--border-light);
+  margin: var(--space-lg) 0;
 }
 
-.home-nav--loading {
-  position: relative;
-}
-
-.home-nav__inner {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-  padding: 0 20rpx;
-}
-
-.home-nav__left {
-  width: 80rpx;
-  display: flex;
-  align-items: center;
-}
-
-.home-nav__brand-icon {
-  font-size: 32rpx;
-  line-height: 1;
-}
-
-.home-nav__title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 4rpx;
-}
-
-.home-nav__right {
-  width: 120rpx;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16rpx;
-}
-
-.home-nav__icon {
-  position: relative;
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.home-nav__icon-text {
-  font-size: 36rpx;
-  line-height: 1;
-}
-
-.home-nav__badge {
-  position: absolute;
-  top: -4rpx;
-  right: -8rpx;
-  min-width: 32rpx;
-  height: 32rpx;
-  line-height: 32rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #ffffff;
-  background: #FFD93D;
-  border-radius: 50px;
-  text-align: center;
-  padding: 0 6rpx;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-/* ========================================================================== */
-/*  SEARCH BAR                                                                */
-/* ========================================================================== */
-.home-search {
-  padding: 20rpx 24rpx;
-  background: #e16531;
-}
-
-/* ========================================================================== */
-/*  BANNER CAROUSEL                                                           */
-/* ========================================================================== */
-.home-banners {
-  padding: 0 20rpx;
-  margin-top: 20rpx;
-}
-
-.home-banners__swiper {
+/* 横滑容器：内层 inline-flex + 首尾 padding，让卡片能滑出屏幕边缘，
+   从而在静止时就露出下一张的一角 —— 「还有更多」的天然提示。 */
+.home__scroll {
   width: 100%;
-  height: 400rpx;
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-.home-banner {
-  width: 100%;
-  height: 400rpx;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30rpx;
-}
-
-.home-banner__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.home-banner__emoji {
-  font-size: 72rpx;
-  line-height: 1;
-  margin-bottom: 12rpx;
-}
-
-.home-banner__title {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8rpx;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 20rpx;
-}
-
-.home-banner__desc {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-/* ========================================================================== */
-/*  CATEGORY GRID                                                             */
-/* ========================================================================== */
-.home-categories {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  padding: 24rpx 8rpx 10rpx;
-  background: #ffffff;
-  margin: 20rpx 20rpx;
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
-.home-category {
-  width: 25%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16rpx 0;
-}
-
-.home-category__icon {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10rpx;
-}
-
-.home-category__emoji {
-  font-size: 40rpx;
-  line-height: 1;
-}
-
-.home-category__label {
-  font-size: 22rpx;
-  color: #4a3728;
-  text-align: center;
-  line-height: 1.3;
-}
-
-/* ========================================================================== */
-/*  SECTION HEADER                                                            */
-/* ========================================================================== */
-.home-section {
-  padding: 0 20rpx;
-  margin-top: 32rpx;
-}
-
-.home-section__header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24rpx;
-}
-
-.home-section__left {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.home-section__bar {
-  width: 4px;
-  height: 32rpx;
-  border-radius: 2px;
-  background: #e16531;
-  margin-right: 16rpx;
-}
-
-.home-section__title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #4a3728;
-}
-
-.home-section__more {
-  font-size: 26rpx;
-  color: #7a6a5a;
-  padding: 4rpx 0;
-}
-
-/* ========================================================================== */
-/*  SECTION ERROR (inline)                                                    */
-/* ========================================================================== */
-.home-section-error {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  padding: 32rpx 20rpx;
-  gap: 16rpx;
-}
-
-.home-section-error__text {
-  font-size: 26rpx;
-  color: #b0a090;
-}
-
-.home-section-error__retry {
-  font-size: 26rpx;
-  color: #e16531;
-  font-weight: 500;
-}
-
-/* ========================================================================== */
-/*  RECOMMEND PRODUCTS — Horizontal Scroll                                    */
-/* ========================================================================== */
-.home-recommend-scroll {
   white-space: nowrap;
 }
 
-.home-recommend-list {
-  display: flex;
-  flex-direction: row;
-  gap: 20rpx;
-  padding-bottom: 8rpx;
+.home__scroll-inner {
+  display: inline-flex;
+  gap: var(--space-md);
+  padding: 0 var(--space-lg);
 }
 
-.home-recommend-card {
-  width: 280rpx;
+.home__scroll-item {
+  width: 260rpx;
   flex-shrink: 0;
 }
 
-/* ========================================================================== */
-/*  DESIGN CASES — 2-col Waterfall Grid                                       */
-/* ========================================================================== */
-.home-cases-grid {
+.home__banners {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 0 var(--space-lg);
+}
+
+.home__grid {
+  display: flex;
   flex-wrap: wrap;
-  gap: 20rpx;
+  gap: var(--space-md);
+  padding: 0 var(--space-lg);
 }
 
-.home-case-card {
-  width: calc(50% - 10rpx);
+.home__grid-item {
+  width: calc((100% - var(--space-md)) / 2);
 }
 
-/* ========================================================================== */
-/*  HOT PRODUCTS — 2-col Grid                                                 */
-/* ========================================================================== */
-.home-hot-grid {
+.home__section-error {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 20rpx;
-}
-
-.home-hot-card {
-  width: calc(50% - 10rpx);
-}
-
-/* ========================================================================== */
-/*  LOAD MORE                                                                 */
-/* ========================================================================== */
-.home-load-more {
-  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 32rpx 0;
+  gap: var(--space-xs);
+  padding: var(--space-xl);
+  color: var(--text-muted);
 }
 
-.home-load-more__text {
-  font-size: 26rpx;
-  color: #7a6a5a;
+.home__section-error-text {
+  font-size: var(--font-sm);
 }
 
-.home-load-more__text--muted {
-  color: #b0a090;
-}
-
-/* ========================================================================== */
-/*  BOTTOM SAFE AREA                                                          */
-/* ========================================================================== */
-.home-safe-bottom {
-  width: 100%;
+.home__loading-more {
+  text-align: center;
+  padding: var(--space-lg);
+  font-size: var(--font-sm);
+  color: var(--text-muted);
 }
 </style>

@@ -517,6 +517,8 @@ export function goBackOrHome(): void {
   if (pages.length > 1) {
     uni.navigateBack()
   } else {
-    uni.switchTab({ url: '/pages/index/index' })
+    // 首页的真实路由是 /pages/home/index；原来写的 /pages/index/index
+    // 根本没注册，switchTab 必然失败。
+    uni.switchTab({ url: '/pages/home/index' })
   }
 }
