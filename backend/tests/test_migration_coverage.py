@@ -77,26 +77,29 @@ def _str_literal(node: ast.AST) -> str | None:
     return None
 
 
-def _column_from_call(call: ast.Call) -> tuple[str, bool | None] | None:
+def _column_from_call(call: ast.Call) -> tuple[str, bool] | None:
     """从 sa.Column('name', ..., nullable=False) 里取出 (列名, 是否非空)。
 
-    迁移里没写 nullable= 时返回 None —— 表示「不比较」，而不是猜一个默认值。
+    迁移里没写 nullable= 时按 SQLAlchemy 的真实默认值 nullable=True 处理。
+    这是事实而非猜测：sa.Column 省略 nullable 时列确实可空，如果这里返回
+    「不比较」，那么 sa.Column('x', sa.Boolean()) 配 Mapped[bool] 的漂移
+    就会被静默放过。
     """
     if not isinstance(call.func, ast.Attribute) or call.func.attr != "Column" or not call.args:
         return None
     name = _str_literal(call.args[0])
     if not name:
         return None
-    nullable: bool | None = None
+    nullable = True
     for kw in call.keywords:
         if kw.arg == "nullable" and isinstance(kw.value, ast.Constant):
             nullable = bool(kw.value.value)
     return name, nullable
 
 
-def _columns_created_by_migrations() -> dict[str, dict[str, bool | None]]:
+def _columns_created_by_migrations() -> dict[str, dict[str, bool]]:
     """{表名: {列名: 是否非空}}，合并 create_table 与后续的 add_column。"""
-    out: dict[str, dict[str, bool | None]] = {}
+    out: dict[str, dict[str, bool]] = {}
     for path in VERSIONS_DIR.glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
@@ -118,7 +121,11 @@ def _columns_created_by_migrations() -> dict[str, dict[str, bool | None]]:
 
 
 def test_migration_columns_match_models():
-    """迁移建出来的列，必须和模型逐列对得上（列名 + 显式声明的可空性）。"""
+    """迁移建出来的列，必须和模型逐列对得上（列名 + 可空性）。
+
+    可空性按 sa.Column 的真实语义比较：迁移里省略 nullable= 等同于
+    nullable=True，而不是「不比较」。
+    """
     migrated = _columns_created_by_migrations()
     problems: list[str] = []
 
@@ -136,7 +143,7 @@ def test_migration_columns_match_models():
             problems.append(f"{table}: 迁移多了模型里没有的列 -> {extra}")
 
         for col, nullable in declared.items():
-            if nullable is None or col not in model_cols:
+            if col not in model_cols:
                 continue
             actual = model_table.columns[col].nullable
             if actual != nullable:
