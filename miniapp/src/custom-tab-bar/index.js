@@ -24,6 +24,25 @@ const TABS = [
 const RAISED_INDEX = TABS.findIndex((t) => t.raised)
 
 /**
+ * 不显示底栏的页面。
+ *
+ * spec §2 #12 / §5.4 ⑤：聊天页输入栏占住底部，保持沉浸。
+ *
+ * 这件事**只能在这里做**。`tabBar.custom: true` 之后，底栏不是微信原生渲染的，
+ * 而是微信在每一个 tabBar 页底部挂一份本组件的实例 —— 只要页面还在
+ * `tabBar.list` 里，底栏就一定出现，页面侧写什么都拦不住（页面不挂
+ * `.has-custom-tabbar` 只是不给自己预留它的高度，底栏照样压在下面）。
+ */
+const HIDDEN_ROUTES = ['pages/ai-assistant/index']
+
+/** 页面栈顶的路由，去掉前导斜杠。 */
+function currentRoute() {
+  const pages = getCurrentPages()
+  const top = pages[pages.length - 1]
+  return String((top && top.route) || '').replace(/^\//, '')
+}
+
+/**
  * 选中项。
  *
  * 首选从页面栈当前位置推出来 —— 每个 tab 页各自渲染一份 tabBar 实例，
@@ -33,13 +52,16 @@ const RAISED_INDEX = TABS.findIndex((t) => t.raised)
  * 组件 attached 的先后在真机上没有保证，只靠存储可能先渲染出一帧高亮错格。
  */
 function currentIndex() {
-  const pages = getCurrentPages()
-  const top = pages[pages.length - 1]
-  const route = String((top && top.route) || '').replace(/^\//, '')
+  const route = currentRoute()
   const i = TABS.findIndex((t) => t.pagePath.replace(/^\//, '') === route)
   if (i >= 0) return i
   // wx.getStorageSync 与页面的 uni.setStorageSync 是同一个存储区
   return Number(wx.getStorageSync(SELECTED_KEY)) || 0
+}
+
+/** 本页要不要把底栏藏起来。 */
+function isHidden() {
+  return HIDDEN_ROUTES.indexOf(currentRoute()) >= 0
 }
 
 Component({
@@ -47,16 +69,19 @@ Component({
     tabs: TABS,
     raisedIndex: RAISED_INDEX,
     selected: 0,
+    // 初值 false，attached 里按当前路由纠正。取不到路由时宁可多显示一帧
+    // 底栏，也不要让 4 个正常的 tab 页因为读不到路由而集体没有底栏。
+    hidden: false,
   },
 
   attached() {
-    this.setData({ selected: currentIndex() })
+    this.setData({ selected: currentIndex(), hidden: isHidden() })
   },
 
   pageLifetimes: {
     // attached 之外再兜一层：页面从别处切回来时重新对齐
     show() {
-      this.setData({ selected: currentIndex() })
+      this.setData({ selected: currentIndex(), hidden: isHidden() })
     },
   },
 

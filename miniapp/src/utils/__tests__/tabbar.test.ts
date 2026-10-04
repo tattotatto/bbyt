@@ -206,6 +206,57 @@ describe('tab 页的底栏配套', () => {
 })
 
 /**
+ * 客服页不显示底栏（spec §2 #12 / §5.4 ⑤）。
+ *
+ * 上面 TAB_PAGES 的注释写着客服页的「特殊处理在 Task 13」—— 就是这一段。
+ *
+ * 关键事实：`tabBar.custom: true` 之后底栏不是微信原生渲染的，而是微信在
+ * **每一个 tabBar 页**底部挂一份 `custom-tab-bar/index` 实例。也就是说，
+ * 只要页面还在 `tabBar.list` 里，底栏就一定渲染 —— 页面侧写什么都拦不住
+ * （不挂 `.has-custom-tabbar` 只是不预留它的高度）。
+ * 所以「这一页不要底栏」只能由**组件自己按当前路由**决定。
+ *
+ * 反过来做（把客服页从 `tabBar.list` 拿掉）看着更直接，代价是：凸起圆失去
+ * switchTab 语义、`tabbar_selected` 下标全体前移（products 3→2、mine 4→3），
+ * 上面「list 有 5 项」「凸起圆位于正中」「4 个页面写的下标」三条不变量一起要改
+ * —— 而其中「顺序错位」正是那个**不报错、只是安静跳错页**的坑。
+ * 不值得为了省掉一个 wx:if 去动它。
+ */
+describe('客服页不显示底栏', () => {
+  const component = (file: string) =>
+    readIfExists(join(ROOT, 'custom-tab-bar', file))
+
+  it('组件会按当前路由把自己藏起来', () => {
+    const js = component('index.js')
+    expect(js.includes('pages/ai-assistant/index'), 'index.js 里没有客服页路由').toBe(true)
+    expect(/\bhidden\b/.test(js), 'index.js 没有 hidden 这个状态').toBe(true)
+  })
+
+  it('组件根元素绑了这个状态', () => {
+    const root = component('index.wxml').match(/^\s*<view[^>]*>/m)
+    expect(root, '读不到 index.wxml 的根元素').not.toBeNull()
+    expect(
+      /wx:if="\{\{!?hidden\}\}"/.test(root![0]),
+      `index.wxml 的根元素没有按 hidden 决定渲染：\n  ${root![0]}\n` +
+        '少了它，客服页底部会多出一条底栏，把输入栏顶上去',
+    ).toBe(true)
+  })
+
+  it('客服页的根元素不挂 .has-custom-tabbar', () => {
+    // 与上面 TAB_PAGES 那条互补：那条只保证 4 个页面**有**，
+    // 这条保证第 5 个页面**没有**。多挂一个不会有任何报错，
+    // 只是聊天页底部凭空多出一段空白。
+    const text = readPage('pages/ai-assistant/index.vue')
+    const root = text.match(/<template>\s*<view[^>]*\bclass="([^"]+)"/)
+    expect(root, '认不出客服页的根元素').not.toBeNull()
+    expect(
+      root![1].split(/\s+/).includes('has-custom-tabbar'),
+      '客服页挂了 .has-custom-tabbar —— 它不显示底栏，不该预留底栏的高度',
+    ).toBe(false)
+  })
+})
+
+/**
  * 自定义 tabBar 是原生 js/wxml/wxss，uni-app 只做原样复制、不编译。
  * 这带来两个别处没有的失配风险，各测一条。
  */

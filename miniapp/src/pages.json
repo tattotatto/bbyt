@@ -18,7 +18,7 @@
     {
       "path": "pages/ai-assistant/index",
       "style": {
-        "navigationBarTitleText": "小暖AI",
+        "navigationBarTitleText": "蓓贝客服",
         "navigationStyle": "custom",
         "navigationBarBackgroundColor": "#e16531",
         "navigationBarTextStyle": "white"

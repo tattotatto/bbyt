@@ -1,4 +1,6 @@
-<view class="tabbar">
+<!-- wx:if 按当前路由决定整条底栏渲不渲染：客服页要沉浸式聊天（spec §2 #12），
+     而底栏是微信挂在每个 tabBar 页上的这个组件，页面侧拦不住。 -->
+<view class="tabbar" wx:if="{{!hidden}}">
   <view class="tabbar__bar">
     <view
       wx:for="{{tabs}}"
