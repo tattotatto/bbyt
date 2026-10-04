@@ -45,11 +45,6 @@ export function getCaseDetail(id: string): Promise<{ data: DesignCase }> {
   return http.get<DesignCase>(`/cases/${id}`)
 }
 
-// Like a case
-export function likeCase(id: number): Promise<{ data: { is_liked: boolean; like_count: number } }> {
-  return http.post(`/cases/${id}/like`)
-}
-
 // Get all filter tags in one call
 export function getCaseTags(): Promise<{ data: CaseTags }> {
   return http.get<CaseTags>('/cases/tags')

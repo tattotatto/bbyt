@@ -54,4 +54,9 @@ describe('案例接口契约', () => {
     const params: CaseListParams = { style_tag: 'ins风' }
     expect(params).toBeDefined()
   })
+
+  it('不再导出 likeCase —— 后端没有这个接口', async () => {
+    const mod = await import('../cases')
+    expect(mod).not.toHaveProperty('likeCase')
+  })
 })
