@@ -98,8 +98,10 @@ async def test_seed_is_idempotent_from_partial_state(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_seeded_products_have_valid_pricing(client, db_session):
-    """每个商品的定价矩阵都要能被定价引擎用（qty 升序、有 normal 档）。"""
+async def test_seeded_products_are_well_formed(client, db_session):
+    """每个种子商品都要是完整的：定价矩阵能被定价引擎用（qty 升序、有 normal 档），
+    并且必须挂在分类下 —— 这条同时守住 PRODUCTS 里的分类名不会写错。
+    """
     from app.models.product import Product
 
     await run_seed(db_session)
@@ -108,6 +110,7 @@ async def test_seeded_products_have_valid_pricing(client, db_session):
     products = (await db_session.execute(select(Product))).scalars().all()
     assert products, "没有种子商品"
     for p in products:
+        assert p.category_id is not None, f"{p.name} 的 category_id 为空 —— PRODUCTS 里的分类名写错了吗？"
         assert "normal" in p.pricing_rules, f"{p.name} 缺 normal 档"
         for level, tiers in p.pricing_rules.items():
             assert tiers, f"{p.name}/{level} 是空档"
