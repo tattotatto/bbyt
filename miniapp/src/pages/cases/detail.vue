@@ -63,6 +63,7 @@ import { showSuccess } from '../../utils/index'
 const loading = ref(true)
 const errorMsg = ref('')
 const caseData = ref<DesignCase | null>(null)
+const caseId = ref('')
 
 async function loadCase(id: string) {
   loading.value = true
@@ -80,6 +81,7 @@ async function loadCase(id: string) {
 onLoad((options: any) => {
   const id = options?.id
   if (id) {
+    caseId.value = id
     loadCase(id)
   } else {
     errorMsg.value = '案例ID无效'
@@ -99,8 +101,10 @@ function handleContact() {
 }
 
 function retry() {
-  if (caseData.value?.id) {
-    loadCase(caseData.value.id)
+  // 用 onLoad 存下来的 id，不能用 caseData.value?.id：
+  // 加载失败时 caseData 是 null，那个前置条件恰好让错误态的按钮变成死按钮。
+  if (caseId.value) {
+    loadCase(caseId.value)
   }
 }
 </script>
