@@ -5,8 +5,11 @@
 
 :root {
   // ── Primary Colors ──────────────────
-  --color-primary: #FF7B7B;
-  --color-primary-light: #FFA5A5;
+  --color-primary: #e16531;
+  --color-primary-light: #f0916a;      // 头图渐变终点（原 #f4a97e，加深一档）
+  --color-primary-mid: #f5b28f;        // 渐变中段
+  --color-ink: #2B2320;                // 横图卡胶囊按钮底色：深棕，比纯黑贴暖调
+  --color-on-primary: #ffffff;
   --color-primary-dark: #E05555;
   --color-primary-bg: #FFF0F0;
 
@@ -40,7 +43,7 @@
   --text-muted: #b0a090;
   --text-placeholder: #c8bca8;
   --text-white: #FFFFFF;
-  --text-link: #FF7B7B;
+  --text-link: #e16531;
 
   // ── Border Colors ───────────────────
   --border-color: #f0e0d0;
@@ -51,23 +54,28 @@
   // ── Status Colors ───────────────────
   --color-success: #A8D8B9;
   --color-warning: #FFD93D;
-  --color-danger: #FF7B7B;
+  --color-danger: #e16531;
   --color-info: #7EC8E3;
   --color-disabled: #d0c8b8;
 
   // ── Border Radius ───────────────────
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-pill: 50px;
+  // 单位是 rpx（750rpx = 屏宽），随机型等比缩放。
+  // 原先是 px（--radius-lg: 20px），那是固定值，大屏上显小。
+  --radius-sm: 8rpx;         // 标签、小徽章
+  --radius-md: 16rpx;        // 输入框
+  --radius-lg: 28rpx;        // 内容卡片（原 40rpx 等效值）
+  --radius-hero: 32rpx;      // 头图 / 横图大卡
+  --radius-pill: 999rpx;     // 胶囊
   --radius-circle: 50%;
   --radius-none: 0;
 
   // ── Shadows ─────────────────────────
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
-  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.1);
-  --shadow-dropdown: 0 6px 24px rgba(0, 0, 0, 0.08);
-  --shadow-button: 0 2px 8px rgba(255, 123, 123, 0.3);
+  --shadow-card: 0 4rpx 16rpx rgba(74, 55, 40, 0.06);    // 带暖调，不纯黑
+  --shadow-hero: 0 8rpx 24rpx rgba(225, 101, 49, 0.18);  // 凸起圆
+  --shadow-float: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);     // 底栏上沿
+  --shadow-elevated: 0 8rpx 30rpx rgba(0, 0, 0, 0.1);
+  --shadow-dropdown: 0 6rpx 24rpx rgba(0, 0, 0, 0.08);
+  --shadow-button: 0 2rpx 8rpx rgba(225, 101, 49, 0.3);
   --shadow-none: none;
 
   // ── Font Sizes ──────────────────────
@@ -120,7 +128,15 @@
 
   // ── Component Tokens ────────────────
   --navbar-height: 44px;
-  --tabbar-height: 50px;
+
+  // 自定义 tabBar 几何（spec §6.2）
+  // 内容高 = 18 上内边距 + 44 图标 + 6 间距 + 24 文字行高 + 22 下内边距
+  --tabbar-content-height: 114rpx;
+  --tabbar-padding-bottom: 22rpx;   // 凸起圆下沿与文字下沿对齐靠它，不要写死数值
+  --tabbar-radius-top: 24rpx;
+  --tabbar-raised-size: 128rpx;
+  --tabbar-gap: 16rpx;              // 页面内容与底栏之间的额外呼吸空间
+
   --safe-area-bottom: constant(safe-area-inset-bottom);
   --safe-area-bottom-env: env(safe-area-inset-bottom);
 }
@@ -289,6 +305,17 @@
 .bg-mint { background-color: var(--color-mint); }
 .bg-mint-light { background-color: var(--color-mint-light); }
 .bg-accent { background-color: var(--color-accent); }
+
+// ── Page Shell ────────────────────────
+// 换成自定义 tabBar 后，页面不再自动预留底栏高度，最后一个分区会被
+// 凸起圆和底栏盖住。所有 tab 页的根元素都挂这个类。
+//
+// 用 calc + 自定义属性而不是写死数值：以后改底栏高度，这里自动跟着走。
+.has-custom-tabbar {
+  padding-bottom: calc(
+    var(--tabbar-content-height) + env(safe-area-inset-bottom) + var(--tabbar-gap)
+  );
+}
 
 // ── Position Utilities ────────────────
 .relative { position: relative; }
