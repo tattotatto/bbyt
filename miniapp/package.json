@@ -5,7 +5,8 @@
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",
-    "test": "vitest run"
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run && npm run typecheck"
   },
   "dependencies": {
     "@dcloudio/uni-app": "vue3",
