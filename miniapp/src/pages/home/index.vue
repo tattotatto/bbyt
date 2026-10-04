@@ -1,5 +1,5 @@
 <template>
-  <view class="home-page">
+  <view class="home-page has-custom-tabbar">
     <!-- ================================================================ -->
     <!--  STATE: LOADING -->
     <!-- ================================================================ -->
@@ -207,7 +207,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import SearchBar from '../../components/SearchBar.vue'
 import ProductCard from '../../components/ProductCard.vue'
 import CaseCard from '../../components/CaseCard.vue'
@@ -427,6 +427,12 @@ async function retryAll() {
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
+// 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
+// tabs 数组里的下标（首页 = 0）。组件优先按页面栈推断选中项，存储是回落值。
+onShow(() => {
+  uni.setStorageSync('tabbar_selected', 0)
+})
+
 onLoad(() => {
   loadAllData()
   // Fetch cart from backend for badge (no-op when not logged in)

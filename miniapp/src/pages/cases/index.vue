@@ -1,5 +1,5 @@
 <template>
-  <view class="cases-page">
+  <view class="cases-page has-custom-tabbar">
     <!-- Search Bar -->
     <SearchBar v-model="keyword" placeholder="搜索设计案例..." @search="onSearch" />
 
@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import SearchBar from '../../components/SearchBar.vue'
 import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
@@ -183,6 +183,12 @@ function retry() {
   page.value = 1
   loadCases()
 }
+
+// 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
+// tabs 数组里的下标（案例 = 1）。组件优先按页面栈推断选中项，存储是回落值。
+onShow(() => {
+  uni.setStorageSync('tabbar_selected', 1)
+})
 
 onLoad(() => {
   loadTags()

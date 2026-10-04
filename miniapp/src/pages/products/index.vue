@@ -1,5 +1,5 @@
 <template>
-  <view class="products-page">
+  <view class="products-page has-custom-tabbar">
     <!-- SearchBar at top -->
     <view class="search-wrap">
       <SearchBar
@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
 import SearchBar from '../../components/SearchBar.vue'
 import ProductCard from '../../components/ProductCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
@@ -248,6 +248,12 @@ function retry() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────
+// 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
+// tabs 数组里的下标（商品 = 3，客服占 2）。组件优先按页面栈推断选中项。
+onShow(() => {
+  uni.setStorageSync('tabbar_selected', 3)
+})
+
 onLoad((options: any) => {
   if (options?.category_id) {
     activeCategoryId.value = Number(options.category_id)
@@ -320,7 +326,7 @@ onReachBottom(() => {
 }
 
 .cat-pill.active {
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 600;
 }
 
@@ -333,7 +339,7 @@ onReachBottom(() => {
   width: 40rpx;
   height: 4rpx;
   border-radius: 2px;
-  background: #FF7B7B;
+  background: #e16531;
 }
 
 /* ── Filter bar ──────────────────────────────────────── */
@@ -363,7 +369,7 @@ onReachBottom(() => {
 }
 
 .check--active {
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 600;
 }
 
@@ -380,7 +386,7 @@ onReachBottom(() => {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
-  background: #FF7B7B;
+  background: #e16531;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -402,7 +408,7 @@ onReachBottom(() => {
 }
 
 .error-retry {
-  background: #FF7B7B;
+  background: #e16531;
   border-radius: 50px;
   padding: 14px 48px;
 }

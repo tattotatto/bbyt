@@ -1,0 +1,83 @@
+/**
+ * 自定义 tabBar 的样式。
+ *
+ * 这个文件是**原样复制**进 dist 的（uni-app 不编译 custom-tab-bar 目录），
+ * 所以每个 token 都写了字面兜底值 var(--token, 兜底)：
+ * 正常情况下走 --tabbar-* token，万一 :root 上的自定义属性没能继承进
+ * 自定义组件，底栏仍然按 spec §6.2 的几何渲染，而不是塌成一条。
+ * 兜底值与 styles/theme.scss 里的一致，tabbar.test.ts 会比对，漂了就红。
+ */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-sticky, 200);
+}
+
+/**
+ * 底栏高度 = --tabbar-content-height，这个值**已经含**下内边距 22rpx
+ * （spec §6.2 的算法：18 上内边距 + 44 图标 + 6 间距 + 24 文字行高 + 22 下内边距 = 114）。
+ * 所以这里不能再 padding-bottom: 22rpx —— 那会把 22rpx 算两遍，
+ * 文字下沿落到栏底 44rpx 处，而凸起圆的下沿在 22rpx 处，两者就对不齐了。
+ * 真正要额外加在下面的只有 iPhone 的 home indicator 高度。
+ */
+.tabbar__bar {
+  display: flex;
+  align-items: flex-start;
+  height: var(--tabbar-content-height, 114rpx);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: content-box;
+  background: var(--bg-white, #FFFFFF);
+  border-radius: var(--tabbar-radius-top, 24rpx) var(--tabbar-radius-top, 24rpx) 0 0;
+  box-shadow: 0 -4rpx 24rpx rgba(225, 101, 49, 0.12);
+}
+
+.tabbar__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 18rpx;
+  position: relative;
+  z-index: 2;   /* 压在凸起圆之上，避免圆盖住相邻 tab 的点击区 */
+}
+
+/* 凸起圆占一个专属位置，但不渲染任何内容 */
+.tabbar__item--placeholder {
+  pointer-events: none;
+}
+
+.tabbar__label {
+  font-size: var(--font-xs, 20rpx);
+  line-height: 24rpx;
+  margin-top: 6rpx;
+  color: var(--text-muted, #b0a090);
+}
+
+.tabbar__label--active {
+  color: var(--color-primary, #e16531);
+  font-weight: 600;
+}
+
+/* 圆下沿与其它 tab 的文字下沿对齐：用定位表达，不写死数值。
+   文字下沿 = 栏底往上 22rpx（= --tabbar-padding-bottom），
+   圆下沿取同一个偏移量，两者自然齐平；以后改底栏高度或字号，这里跟着走。
+   （spec §6.3） */
+.tabbar__raised {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--tabbar-padding-bottom, 22rpx) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: var(--tabbar-raised-size, 128rpx);
+  height: var(--tabbar-raised-size, 128rpx);
+  border-radius: 50%;
+  background: var(--color-primary, #e16531);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(225, 101, 49, 0.35);
+  z-index: 1;
+}

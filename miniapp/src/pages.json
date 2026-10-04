@@ -9,8 +9,9 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "HX Mall",
-        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "蓓贝婴童",
+        "navigationBarBackgroundColor": "#e16531",
         "navigationBarTextStyle": "white"
       }
     },
@@ -19,13 +20,14 @@
       "style": {
         "navigationBarTitleText": "小暖AI",
         "navigationStyle": "custom",
-        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationBarBackgroundColor": "#e16531",
         "navigationBarTextStyle": "white"
       }
     },
     {
       "path": "pages/cases/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "设计案例",
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
@@ -42,6 +44,7 @@
     {
       "path": "pages/products/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "商品列表",
         "navigationBarBackgroundColor": "#FFF8F0",
         "navigationBarTextStyle": "black"
@@ -90,8 +93,9 @@
     {
       "path": "pages/mine/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "我的",
-        "navigationBarBackgroundColor": "#FF7B7B",
+        "navigationBarBackgroundColor": "#e16531",
         "navigationBarTextStyle": "white"
       }
     },
@@ -169,46 +173,22 @@
     }
   ],
   "tabBar": {
+    "custom": true,
     "color": "#7a6a5a",
-    "selectedColor": "#FF7B7B",
+    "selectedColor": "#e16531",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
-      {
-        "pagePath": "pages/home/index",
-        "text": "首页",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home-active.png"
-      },
-      {
-        "pagePath": "pages/ai-assistant/index",
-        "text": "小暖AI",
-        "iconPath": "static/icons/ai.png",
-        "selectedIconPath": "static/icons/ai-active.png"
-      },
-      {
-        "pagePath": "pages/cases/index",
-        "text": "案例",
-        "iconPath": "static/icons/cases.png",
-        "selectedIconPath": "static/icons/cases-active.png"
-      },
-      {
-        "pagePath": "pages/products/index",
-        "text": "商品",
-        "iconPath": "static/icons/products.png",
-        "selectedIconPath": "static/icons/products-active.png"
-      },
-      {
-        "pagePath": "pages/mine/index",
-        "text": "我的",
-        "iconPath": "static/icons/mine.png",
-        "selectedIconPath": "static/icons/mine-active.png"
-      }
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/cases/index", "text": "案例" },
+      { "pagePath": "pages/ai-assistant/index", "text": "蓓贝客服" },
+      { "pagePath": "pages/products/index", "text": "商品" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
     ]
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "HX Mall",
+    "navigationBarTitleText": "蓓贝婴童",
     "navigationBarBackgroundColor": "#FFF8F0",
     "backgroundColor": "#FFF8F0"
   }

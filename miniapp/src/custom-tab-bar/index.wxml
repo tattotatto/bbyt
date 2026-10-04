@@ -1,0 +1,29 @@
+<view class="tabbar">
+  <view class="tabbar__bar">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="pagePath"
+      class="tabbar__item {{item.raised ? 'tabbar__item--placeholder' : ''}}"
+      data-index="{{index}}"
+      bindtap="switchTo"
+    >
+      <block wx:if="{{!item.raised}}">
+        <!-- 颜色写死成十六进制而不是 var(--…)：u-icon 的 color 是 prop，
+             最终落到元素的行内 style 上，值必须是一个确定的颜色字符串。
+             这两个值与 AppIcon.vue 里 TONE_COLORS 的 primary / muted 一致，
+             tabbar.test.ts 会比对，漂了就红。 -->
+        <u-icon
+          name="{{selected === index ? item.iconActive : item.icon}}"
+          size="44rpx"
+          color="{{selected === index ? '#e16531' : '#a89a8a'}}"
+        />
+        <text class="tabbar__label {{selected === index ? 'tabbar__label--active' : ''}}">{{item.text}}</text>
+      </block>
+    </view>
+  </view>
+
+  <!-- 凸起圆：绝对定位压在白底栏上，无描边 -->
+  <view class="tabbar__raised" data-index="{{raisedIndex}}" bindtap="switchTo">
+    <u-icon name="{{tabs[raisedIndex].iconActive}}" size="56rpx" color="#ffffff" />
+  </view>
+</view>

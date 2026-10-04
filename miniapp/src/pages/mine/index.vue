@@ -1,5 +1,5 @@
 <template>
-  <view class="mine-page">
+  <view class="mine-page has-custom-tabbar">
     <!-- ================================================================ -->
     <!--  1. Header — Coral Pink Gradient                                 -->
     <!-- ================================================================ -->
@@ -144,7 +144,7 @@
     <!--  6. Version                                                      -->
     <!-- ================================================================ -->
     <view class="version-section">
-      <text class="version-text">HX Mall v1.0.0</text>
+      <text class="version-text">蓓贝婴童 v1.0.0</text>
     </view>
 
     <!-- ================================================================ -->
@@ -156,6 +156,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '../../stores/user'
 import { useAppStore } from '../../stores/app'
 
@@ -164,6 +165,12 @@ const appStore = useAppStore()
 
 // Init app store to get system info
 appStore.init()
+
+// 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
+// tabs 数组里的下标（我的 = 4）。组件优先按页面栈推断选中项，存储是回落值。
+onShow(() => {
+  uni.setStorageSync('tabbar_selected', 4)
+})
 
 const safeBottom = computed(() => Math.max(appStore.safeAreaBottom, 20))
 
@@ -215,7 +222,7 @@ function navigateTo(url: string) {
 /*  1. HEADER — Coral Pink Gradient                                           */
 /* ========================================================================== */
 .profile-header {
-  background: linear-gradient(180deg, #FF7B7B 0%, #FF9B9B 100%);
+  background: linear-gradient(180deg, #e16531 0%, #f39a6d 100%);
   padding: 40rpx 32rpx 60rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
@@ -396,7 +403,7 @@ function navigateTo(url: string) {
 
 .menu-level-tag {
   font-size: 22rpx;
-  color: #FF7B7B;
+  color: #e16531;
   background: #FFF0F0;
   padding: 4rpx 12rpx;
   border-radius: 8px;
@@ -415,7 +422,7 @@ function navigateTo(url: string) {
   height: 88rpx;
   border-radius: 50px;
   background: #ffffff;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,7 +432,7 @@ function navigateTo(url: string) {
 .btn-logout-text {
   font-size: 30rpx;
   font-weight: 500;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ========================================================================== */
