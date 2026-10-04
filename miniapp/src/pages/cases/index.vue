@@ -1,88 +1,103 @@
 <template>
-  <view class="cases-page has-custom-tabbar">
-    <!-- Search Bar -->
-    <SearchBar v-model="keyword" placeholder="搜索设计案例..." @search="onSearch" />
-
-    <!-- Filter Bar -->
-    <view class="filter-bar">
-      <view class="filter-item" @tap="toggleStyleDropdown">
-        <text>{{ activeStyleTag || '全部风格' }}</text>
-        <text>▾</text>
-      </view>
-      <view class="filter-item" @tap="toggleCategoryDropdown">
-        <text>{{ activeCategoryTag || '全部类型' }}</text>
-        <text>▾</text>
-      </view>
-    </view>
-
-    <!-- Style Dropdown -->
-    <view v-if="showStyleDropdown" class="dropdown">
-      <view
-        v-for="tag in allStyleTags"
-        :key="tag"
-        :class="['tag-pill', { active: activeStyleTag === tag }]"
-        @tap="selectStyleTag(tag)"
-      >
-        {{ tag }}
-      </view>
-    </view>
-
-    <!-- Category Dropdown -->
-    <view v-if="showCategoryDropdown" class="dropdown">
-      <view
-        v-for="tag in allCategoryTags"
-        :key="tag"
-        :class="['tag-pill', { active: activeCategoryTag === tag }]"
-        @tap="selectCategoryTag(tag)"
-      >
-        {{ tag }}
-      </view>
-    </view>
-
-    <!-- Loading State -->
-    <PageLoading v-if="loading" type="card" :count="4" />
-
-    <!-- Error State -->
-    <view v-else-if="errorMsg" class="error-state">
-      <text class="error-icon">😞</text>
-      <text class="error-text">{{ errorMsg }}</text>
-      <view class="retry-btn" @tap="retry">
-        <text>重新加载</text>
-      </view>
-    </view>
-
-    <!-- Empty State -->
-    <EmptyState
-      v-else-if="cases.length === 0"
-      icon="🎨"
-      title="暂无案例"
-      description="换个风格试试吧"
+  <view class="page has-custom-tabbar">
+    <!-- ① 品牌头图，紧凑版 + 搜索框（同商品页） -->
+    <BrandHero
+      title="设计案例"
+      :compact="true"
+      show-search
+      @search="onSearchConfirm"
     />
 
-    <!-- Case Waterfall Grid -->
-    <view v-else class="case-grid">
-      <CaseCard v-for="c in cases" :key="c.id" :caseData="c" @click="goToDetail" />
-    </view>
+    <!-- ② 上叠白卡：两层筛选 chips。
+         分类行是后端 category_tags（儿童房 / 游戏区 …），风格行是
+         style_tags（ins风 / 自然原木 …）—— 两组值在 seed 里就是分开的两列，
+         合成一行会互相覆盖。风格行在没有风格标签时整行不渲染。 -->
+    <SurfaceCard overlap>
+      <view class="chips">
+        <view
+          v-for="c in categoryChips"
+          :key="c.value ?? 'all'"
+          class="chips__item"
+          :class="{ 'chips__item--active': activeCategoryTag === c.value }"
+          @tap="onCategoryTagSelect(c.value)"
+        >
+          <text class="chips__label" :class="{ 'chips__label--active': activeCategoryTag === c.value }">
+            {{ c.label }}
+          </text>
+        </view>
+      </view>
 
-    <!-- Load More -->
-    <view class="load-more">
-      <text v-if="loadingMore">加载中...</text>
-      <text v-else-if="!hasMore && cases.length > 0">— 没有更多了 —</text>
-    </view>
+      <view v-if="styleTags.length" class="chips chips--sub">
+        <view
+          v-for="s in styleChips"
+          :key="s.value ?? 'all-style'"
+          class="chips__item chips__item--sm"
+          :class="{ 'chips__item--active': activeStyleTag === s.value }"
+          @tap="onStyleTagSelect(s.value)"
+        >
+          <text class="chips__label" :class="{ 'chips__label--active': activeStyleTag === s.value }">
+            {{ s.label }}
+          </text>
+        </view>
+      </view>
+    </SurfaceCard>
+
+    <SectionHeader title="精选案例" />
+
+    <!-- 骨架紧贴筛选区下方，三种状态互斥 —— 排在网格之后会被上面的空网格
+         顶出首屏（同商品页）。 -->
+    <PageLoading v-if="loading" />
+
+    <EmptyState
+      v-else-if="errorMsg"
+      :title="errorMsg"
+      description="检查网络后点击重试"
+      :show-button="true"
+      button-text="重新加载"
+      @button-click="retry"
+    />
+
+    <template v-else>
+      <!-- ③ 两列瀑布流 -->
+      <view class="grid">
+        <CaseCard
+          v-for="c in cases"
+          :key="c.id"
+          class="grid__item"
+          :caseData="c"
+          @click="goToCase"
+        />
+      </view>
+
+      <EmptyState
+        v-if="cases.length === 0 && !loadingMore"
+        illustration="empty-page"
+        title="暂无案例"
+        description="换个风格或分类试试"
+      />
+
+      <view v-if="loadingMore" class="list-foot">加载中…</view>
+      <view v-else-if="!hasMore && cases.length" class="list-foot">已经到底了</view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
-import SearchBar from '../../components/SearchBar.vue'
+import BrandHero from '../../components/BrandHero.vue'
+import SurfaceCard from '../../components/SurfaceCard.vue'
+import SectionHeader from '../../components/SectionHeader.vue'
 import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { getCaseList, getCaseTags } from '../../api/cases'
 import type { DesignCase, CaseListParams } from '../../api/cases'
+import { applyFallback } from '../../mock/fallback'
+import { DEMO_CASES } from '../../mock/demo-data'
 import { PAGE_SIZE } from '../../utils/constants'
 
+// ── State ──────────────────────────────────────────────
 const loading = ref(true)
 const errorMsg = ref('')
 const cases = ref<DesignCase[]>([])
@@ -90,15 +105,24 @@ const page = ref(1)
 const loadingMore = ref(false)
 const hasMore = ref(true)
 const keyword = ref('')
-const activeStyleTag = ref('')
-const activeCategoryTag = ref('')
+
+// 初值是 undefined，chips 里「全部」那一项也是 undefined —— 两边必须是同一个值，
+// 否则 `undefined === ''` 恒假，进页面时「全部」不高亮，看起来像没选中任何筛选。
+const activeStyleTag = ref<string | undefined>(undefined)
+const activeCategoryTag = ref<string | undefined>(undefined)
 const styleTags = ref<string[]>([])
 const categoryTags = ref<string[]>([])
-const showStyleDropdown = ref(false)
-const showCategoryDropdown = ref(false)
 
-const allStyleTags = computed(() => ['全部风格', ...styleTags.value])
-const allCategoryTags = computed(() => ['全部类型', ...categoryTags.value])
+// ── Tags ───────────────────────────────────────────────
+const categoryChips = computed(() => [
+  { value: undefined as string | undefined, label: '全部' },
+  ...categoryTags.value.map((t) => ({ value: t as string | undefined, label: t })),
+])
+
+const styleChips = computed(() => [
+  { value: undefined as string | undefined, label: '全部风格' },
+  ...styleTags.value.map((t) => ({ value: t as string | undefined, label: t })),
+])
 
 async function loadTags() {
   try {
@@ -106,11 +130,29 @@ async function loadTags() {
     styleTags.value = res.data?.style_tags || []
     categoryTags.value = res.data?.category_tags || []
   } catch {
-    // 标签是非关键路径。接口失败或后端仍是旧版本时，
-    // 保持两个数组为空 —— 筛选器只剩「全部风格」/「全部类型」，页面照常可用。
+    // 标签是非关键路径。接口失败或后端仍是旧版本时，保持两个数组为空 ——
+    // 筛选器只剩「全部」，页面照常可用。
   }
 }
 
+// ── Filter selection ───────────────────────────────────
+// 原样透传：把 undefined 折成空串会让「全部」这一格再也点不亮（见上面的注释）。
+function onCategoryTagSelect(value: string | undefined) {
+  activeCategoryTag.value = value
+  loadCases(true)
+}
+
+function onStyleTagSelect(value: string | undefined) {
+  activeStyleTag.value = value
+  loadCases(true)
+}
+
+function onSearchConfirm(kw: string) {
+  keyword.value = kw
+  loadCases(true)
+}
+
+// ── Load cases ─────────────────────────────────────────
 async function loadCases(isRefresh = false) {
   if (isRefresh) {
     page.value = 1
@@ -123,76 +165,50 @@ async function loadCases(isRefresh = false) {
   errorMsg.value = ''
 
   try {
-    const params: CaseListParams = { page: page.value, page_size: 20 }
+    const params: CaseListParams = { page: page.value, page_size: PAGE_SIZE }
     if (activeStyleTag.value) params.style = activeStyleTag.value
     if (activeCategoryTag.value) params.category_tag = activeCategoryTag.value
     if (keyword.value.trim()) params.keyword = keyword.value.trim()
 
     const res = await getCaseList(params)
+    const list = res.data.items || []
 
     if (isRefresh || page.value === 1) {
-      cases.value = res.data.items
+      // 只有第一页兜底。分页追加时若也兜底，「加载更多」会无限重复
+      // 同一批演示案例 —— 空结果会被替换成完整列表而不是追加 0 条。
+      cases.value = applyFallback(list, DEMO_CASES)
     } else {
-      cases.value = [...cases.value, ...res.data.items]
+      cases.value = [...cases.value, ...list]
     }
 
-    hasMore.value = res.data.items.length >= PAGE_SIZE
+    hasMore.value = list.length >= PAGE_SIZE
   } catch (err: any) {
-    errorMsg.value = err.message || '加载失败'
+    errorMsg.value = err.message || err.msg || '加载失败'
+    if (page.value > 1) page.value--
   } finally {
     loading.value = false
     loadingMore.value = false
   }
 }
 
-function toggleStyleDropdown() {
-  showStyleDropdown.value = !showStyleDropdown.value
-  showCategoryDropdown.value = false
-}
-
-function toggleCategoryDropdown() {
-  showCategoryDropdown.value = !showCategoryDropdown.value
-  showStyleDropdown.value = false
-}
-
-function selectStyleTag(tag: string) {
-  activeStyleTag.value = tag === '全部风格' ? '' : tag
-  showStyleDropdown.value = false
-  page.value = 1
-  loadCases()
-}
-
-function selectCategoryTag(tag: string) {
-  activeCategoryTag.value = tag === '全部类型' ? '' : tag
-  showCategoryDropdown.value = false
-  page.value = 1
-  loadCases()
-}
-
-function onSearch(kw: string) {
-  keyword.value = kw
-  page.value = 1
-  loadCases()
-}
-
-function goToDetail(id: string | number) {
-  uni.navigateTo({ url: '/pages/cases/detail?id=' + id })
-}
-
 function retry() {
-  page.value = 1
-  loadCases()
+  loadCases(true)
 }
 
+function goToCase(id: string | number) {
+  uni.navigateTo({ url: `/pages/cases/detail?id=${id}` })
+}
+
+// ── Lifecycle ──────────────────────────────────────────
 // 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
-// tabs 数组里的下标（案例 = 1）。组件优先按页面栈推断选中项，存储是回落值。
+// tabs 数组里的下标（案例 = 1）。组件优先按页面栈推断选中项。
 onShow(() => {
   uni.setStorageSync('tabbar_selected', 1)
 })
 
 onLoad(() => {
   loadTags()
-  loadCases()
+  loadCases(true)
 })
 
 onPullDownRefresh(() => {
@@ -210,103 +226,62 @@ onReachBottom(() => {
 </script>
 
 <style scoped>
-.cases-page {
+.page {
   min-height: 100vh;
-  background-color: #FFF8F0;
-  padding-bottom: 40rpx;
+  background: var(--bg-primary);
 }
 
-/* Filter bar */
-.filter-bar {
+/* ── 筛选 chips ───────────────────────────────────────── */
+.chips {
   display: flex;
-  align-items: center;
-  padding: 20rpx 28rpx;
-  gap: 20rpx;
-  background-color: #FFFFFF;
-  border-bottom: 1rpx solid #f0e0d0;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 
-.filter-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
+.chips--sub {
+  margin-top: var(--space-md);
+}
+
+.chips__item {
   padding: 12rpx 28rpx;
-  background-color: #FFF0F0;
-  border-radius: 32rpx;
-  font-size: 24rpx;
-  color: #4a3728;
-  border: 1rpx solid #f4a97e;
+  border-radius: var(--radius-pill);
+  background: var(--bg-secondary);
 }
 
-/* Dropdown */
-.dropdown {
+.chips__item--sm {
+  padding: 8rpx 22rpx;
+}
+
+.chips__item--active {
+  background: var(--color-primary);
+}
+
+.chips__label {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.chips__label--active {
+  color: var(--text-white);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── 案例网格 ─────────────────────────────────────────── */
+.grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
-  padding: 20rpx 28rpx;
-  background-color: #FFFFFF;
-  border-bottom: 1rpx solid #f0e0d0;
+  gap: var(--space-md);
+  padding: 0 var(--space-lg);
 }
 
-.tag-pill {
-  padding: 10rpx 24rpx;
-  border-radius: 32rpx;
-  font-size: 24rpx;
-  color: #7a6a5a;
-  background-color: #f5f5f5;
-  border: 1rpx solid #f0e0d0;
+.grid__item {
+  width: calc((100% - var(--space-md)) / 2);
 }
 
-.tag-pill.active {
-  color: #FFFFFF;
-  background-color: #e16531;
-  border-color: #e16531;
-}
-
-/* Error state */
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 40rpx;
-}
-
-.error-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
-}
-
-.error-text {
-  font-size: 26rpx;
-  color: #7a6a5a;
-  margin-bottom: 32rpx;
+.list-foot {
   text-align: center;
-}
-
-.retry-btn {
-  padding: 16rpx 48rpx;
-  background-color: #e16531;
-  border-radius: 32rpx;
-  font-size: 26rpx;
-  color: #FFFFFF;
-}
-
-/* Case grid */
-.case-grid {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 16rpx;
-  gap: 16rpx;
-}
-
-/* Load more */
-.load-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32rpx 0;
-  font-size: 24rpx;
-  color: #b0a090;
+  padding: var(--space-lg);
+  font-size: var(--font-sm);
+  color: var(--text-muted);
 }
 </style>
