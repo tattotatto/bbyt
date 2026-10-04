@@ -333,7 +333,7 @@ onShow(() => {
 }
 
 .benefit-value--highlight {
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 600;
 }
 
@@ -367,7 +367,7 @@ onShow(() => {
 }
 
 .credit-value--used {
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .credit-value--total {

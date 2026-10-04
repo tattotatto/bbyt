@@ -205,7 +205,7 @@
           <switch
             class="form-switch"
             :checked="form.is_default"
-            color="#FF7B7B"
+            color="#e16531"
             @change="onToggleDefault"
           />
         </view>
@@ -414,7 +414,7 @@ function onDeleteAddress(addr: Address): void {
     title: '确认删除',
     content: `确定要删除「${addr.name}」的收货地址吗？`,
     confirmText: '删除',
-    confirmColor: '#FF7B7B',
+    confirmColor: '#e16531',
     success: (res) => {
       if (res.confirm) {
         performDelete(addr.id)
@@ -508,7 +508,7 @@ onShow(() => {
 /* Default badge */
 .address-card__badge {
   background: #FFF0F0;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
   border-radius: 8rpx;
   padding: 4rpx 16rpx;
   flex-shrink: 0;
@@ -516,7 +516,7 @@ onShow(() => {
 
 .address-card__badge-text {
   font-size: 20rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 
@@ -558,7 +558,7 @@ onShow(() => {
 }
 
 .address-card__action--edit .address-card__action-text {
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ========================================================================== */
@@ -578,13 +578,13 @@ onShow(() => {
   width: 100%;
   height: 88rpx;
   border-radius: 50px;
-  background: linear-gradient(135deg, #FF7B7B, #FF9B9B);
+  background: linear-gradient(135deg, #e16531, #f39a6d);
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  box-shadow: 0 4px 20px rgba(255, 123, 123, 0.3);
+  box-shadow: 0 4px 20px rgba(225, 101, 49, 0.3);
   transition: opacity 0.2s ease;
 }
 
@@ -654,7 +654,7 @@ onShow(() => {
 }
 
 .form-required {
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .form-input {
@@ -679,12 +679,12 @@ onShow(() => {
   width: 100%;
   height: 88rpx;
   border-radius: 50px;
-  background: linear-gradient(135deg, #FF7B7B, #FF9B9B);
+  background: linear-gradient(135deg, #e16531, #f39a6d);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s ease;
-  box-shadow: 0 4px 20px rgba(255, 123, 123, 0.3);
+  box-shadow: 0 4px 20px rgba(225, 101, 49, 0.3);
 }
 
 .btn-save--disabled {

@@ -17,7 +17,7 @@ describe('orderStatusLabel', () => {
 
 describe('orderStatusColor', () => {
   it('returns color for known status and fallback otherwise', () => {
-    expect(orderStatusColor('pending_payment')).toBe('#FF7B7B')
+    expect(orderStatusColor('pending_payment')).toBe('#e16531')
     expect(orderStatusColor('nope')).toBe('#7a6a5a')
   })
 })

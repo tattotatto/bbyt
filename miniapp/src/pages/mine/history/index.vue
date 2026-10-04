@@ -239,7 +239,7 @@ function onRemoveItem(item: HistoryItemOut): void {
     title: '删除记录',
     content: `确定要删除「${item.name}」的浏览记录吗？`,
     confirmText: '删除',
-    confirmColor: '#FF7B7B',
+    confirmColor: '#e16531',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -264,7 +264,7 @@ function onClearAll(): void {
     title: '清空记录',
     content: '确定要清空所有浏览记录吗？此操作不可撤销。',
     confirmText: '清空',
-    confirmColor: '#FF7B7B',
+    confirmColor: '#e16531',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -333,7 +333,7 @@ onShow(() => {
 
 .history-header__clear-text {
   font-size: 24rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 
@@ -422,7 +422,7 @@ onShow(() => {
 .history-item__price {
   font-size: 30rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .history-item__time {

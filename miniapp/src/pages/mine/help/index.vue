@@ -103,7 +103,7 @@ function toggleFaq(index: number) {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background: #FF7B7B;
+  background: #e16531;
   color: #ffffff;
   font-size: 22rpx;
   font-weight: 700;

@@ -359,7 +359,7 @@ function goShopping() {
 .addr-empty-text {
   font-size: 28rpx;
   font-weight: 500;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ── Items Card ── */
@@ -453,7 +453,7 @@ function goShopping() {
 .item-price {
   font-size: 28rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .item-qty {
@@ -537,8 +537,8 @@ function goShopping() {
 }
 
 .radio.checked {
-  border-color: #FF7B7B;
-  background-color: #FF7B7B;
+  border-color: #e16531;
+  background-color: #e16531;
 }
 
 .method-icon {
@@ -590,7 +590,7 @@ function goShopping() {
 .price-total {
   font-size: 36rpx;
   font-weight: 700;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ── Bottom Bar ── */
@@ -623,13 +623,13 @@ function goShopping() {
 .bottom-total-price {
   font-size: 36rpx;
   font-weight: 700;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .btn-submit {
   padding: 16rpx 48rpx;
   border-radius: 50rpx;
-  background-color: #FF7B7B;
+  background-color: #e16531;
 }
 
 .btn-submit.disabled {

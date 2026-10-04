@@ -246,7 +246,7 @@ onShow(() => {
 }
 
 .form-required {
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .form-input {
@@ -271,12 +271,12 @@ onShow(() => {
   width: 100%;
   height: 88rpx;
   border-radius: 50px;
-  background: linear-gradient(135deg, #FF7B7B, #FF9B9B);
+  background: linear-gradient(135deg, #e16531, #f39a6d);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s ease;
-  box-shadow: 0 4px 20px rgba(255, 123, 123, 0.3);
+  box-shadow: 0 4px 20px rgba(225, 101, 49, 0.3);
 }
 
 .btn-save--disabled {

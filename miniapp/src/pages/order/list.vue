@@ -373,7 +373,7 @@ function handleBuyAgain(_order: Order) {
 }
 
 .tab-item--active .tab-text {
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 600;
 }
 
@@ -384,7 +384,7 @@ function handleBuyAgain(_order: Order) {
   transform: translateX(-50%);
   width: 40rpx;
   height: 4rpx;
-  background: #FF7B7B;
+  background: #e16531;
   border-radius: 2px;
 }
 
@@ -414,12 +414,12 @@ function handleBuyAgain(_order: Order) {
   margin-top: 32rpx;
   padding: 14rpx 48rpx;
   border-radius: 50px;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
 }
 
 .error-retry-text {
   font-size: 28rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 
@@ -533,7 +533,7 @@ function handleBuyAgain(_order: Order) {
 .item-price {
   font-size: 28rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .item-qty {
@@ -568,7 +568,7 @@ function handleBuyAgain(_order: Order) {
 /* ===== Buttons ===== */
 .btn-solid {
   border-radius: 50px;
-  background: #FF7B7B;
+  background: #e16531;
   padding: 8px 24px;
 }
 

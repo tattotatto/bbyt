@@ -153,7 +153,7 @@ function formatMoney(price: number): string {
 
 .price-table__cell--active {
   font-weight: 700;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .price-table__level-badge {
@@ -163,7 +163,7 @@ function formatMoney(price: number): string {
 
 .price-table__level-text {
   font-size: 22rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 

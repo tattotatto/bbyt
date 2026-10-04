@@ -375,12 +375,12 @@ function handleBuyAgain() {
   margin-top: 32rpx;
   padding: 14rpx 48rpx;
   border-radius: 50px;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
 }
 
 .error-retry-text {
   font-size: 28rpx;
-  color: #FF7B7B;
+  color: #e16531;
   font-weight: 500;
 }
 
@@ -537,7 +537,7 @@ function handleBuyAgain() {
 .item-price {
   font-size: 28rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .item-qty {
@@ -591,7 +591,7 @@ function handleBuyAgain() {
 .price-value--total {
   font-size: 32rpx;
   font-weight: 700;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* ===== Order Info Card ===== */
@@ -647,10 +647,10 @@ function handleBuyAgain() {
 
 .info-copy {
   font-size: 22rpx;
-  color: #FF7B7B;
+  color: #e16531;
   margin-left: 16rpx;
   padding: 4rpx 12rpx;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -683,7 +683,7 @@ function handleBuyAgain() {
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  background: #FF7B7B;
+  background: #e16531;
   flex-shrink: 0;
   margin-top: 6rpx;
   z-index: 1;
@@ -743,7 +743,7 @@ function handleBuyAgain() {
 /* ===== Buttons ===== */
 .btn-solid {
   border-radius: 50px;
-  background: #FF7B7B;
+  background: #e16531;
   padding: 8px 24px;
 }
 

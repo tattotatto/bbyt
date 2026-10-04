@@ -8,7 +8,7 @@
       </view>
       <view class="info-row">
         <text class="info-label">客服微信</text>
-        <text class="info-value">HXMall_KF (暂未开通)</text>
+        <text class="info-value">蓓贝婴童KF (暂未开通)</text>
       </view>
       <view class="info-row info-row--last">
         <text class="info-label">服务时间</text>
@@ -88,12 +88,12 @@ function handleCall() {
   width: 100%;
   height: 88rpx;
   border-radius: 50px;
-  background: linear-gradient(135deg, #FF7B7B 0%, #FF9B9B 100%);
+  background: linear-gradient(135deg, #e16531 0%, #f39a6d 100%);
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(255, 123, 123, 0.3);
+  box-shadow: 0 4px 20px rgba(225, 101, 49, 0.3);
 }
 
 .btn-call-icon {

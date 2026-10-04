@@ -225,7 +225,7 @@ function onRemoveFavorite(item: FavoriteItemOut): void {
     title: '取消收藏',
     content: `确定要取消收藏「${item.name}」吗？`,
     confirmText: '确定',
-    confirmColor: '#FF7B7B',
+    confirmColor: '#e16531',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -374,7 +374,7 @@ onShow(() => {
 .favorite-item__price {
   font-size: 30rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .favorite-item__time {
@@ -395,7 +395,7 @@ onShow(() => {
 
 .favorite-item__remove-icon {
   font-size: 36rpx;
-  color: #FF7B7B;
+  color: #e16531;
   line-height: 1;
 }
 

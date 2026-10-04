@@ -298,7 +298,7 @@ function onRemoveItem(item: CartItem): void {
     title: '确认删除',
     content: `确定要删除「${item.productName}」吗？`,
     confirmText: '删除',
-    confirmColor: '#FF7B7B',
+    confirmColor: '#e16531',
     success: (res) => {
       if (res.confirm) {
         loadingItemIds.value = { ...loadingItemIds.value, [item.id]: true }
@@ -387,8 +387,8 @@ onShow(() => {
 }
 
 .cart-checkbox--checked {
-  background: #FF7B7B;
-  border-color: #FF7B7B;
+  background: #e16531;
+  border-color: #e16531;
 }
 
 .cart-checkbox--disabled {
@@ -498,7 +498,7 @@ onShow(() => {
 .cart-item__price {
   font-size: 30rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 /* Stepper */
@@ -594,11 +594,11 @@ onShow(() => {
 .cart-bottom-bar__total {
   font-size: 30rpx;
   font-weight: 600;
-  color: #FF7B7B;
+  color: #e16531;
 }
 
 .cart-bottom-bar__btn {
-  background: linear-gradient(135deg, #FF7B7B, #FF9B9B);
+  background: linear-gradient(135deg, #e16531, #f39a6d);
   border-radius: 50px;
   padding: 16rpx 48rpx;
   transition: opacity 0.2s ease;

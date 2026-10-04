@@ -10,7 +10,7 @@
       <view class="menu-item menu-item--last">
         <text class="menu-icon">&#x2139;</text>
         <text class="menu-title">关于</text>
-        <text class="menu-value">HX Mall v1.0.0</text>
+        <text class="menu-value">蓓贝婴童 v1.0.0</text>
       </view>
     </view>
 
@@ -118,7 +118,7 @@ function handleLogout() {
   height: 88rpx;
   border-radius: 50px;
   background: #ffffff;
-  border: 1px solid #FF7B7B;
+  border: 1px solid #e16531;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,6 +128,6 @@ function handleLogout() {
 .btn-logout-text {
   font-size: 30rpx;
   font-weight: 500;
-  color: #FF7B7B;
+  color: #e16531;
 }
 </style>

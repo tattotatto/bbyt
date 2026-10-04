@@ -6,13 +6,13 @@
 // ── Order Status (string-keyed, self-contained) ─────
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending_payment: { label: '待付款', color: '#FF7B7B' },
+  pending_payment: { label: '待付款', color: '#e16531' },
   paid:             { label: '待发货', color: '#FFD93D' },
   shipped:          { label: '已发货', color: '#7EC8E3' },
   confirmed:        { label: '已确认', color: '#A8D8B9' },
   completed:        { label: '已完成', color: '#A8D8B9' },
   cancelled:        { label: '已取消', color: '#7a6a5a' },
-  refunding:        { label: '退款中', color: '#FF7B7B' },
+  refunding:        { label: '退款中', color: '#e16531' },
 }
 
 const FALLBACK_STATUS = { label: '待付款', color: '#7a6a5a' }
