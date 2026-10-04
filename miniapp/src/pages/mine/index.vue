@@ -1,169 +1,79 @@
 <template>
-  <view class="mine-page has-custom-tabbar">
-    <!-- ================================================================ -->
-    <!--  1. Header — Coral Pink Gradient                                 -->
-    <!-- ================================================================ -->
-    <view class="profile-header">
-      <!-- Logged in -->
-      <template v-if="userStore.isLoggedIn">
-        <view class="profile-avatar-wrapper">
-          <image
-            class="profile-avatar"
-            :src="userStore.avatar"
-            mode="aspectFill"
-          />
-        </view>
-        <text class="profile-nickname">{{ userStore.nickname }}</text>
-        <view class="profile-level-badge">
-          <text class="profile-level-text">{{ userStore.levelLabel }}</text>
-        </view>
-        <text
-          v-if="userStore.userInfo?.retailer_profile?.company_name"
-          class="profile-company"
+  <view class="page has-custom-tabbar">
+    <!-- ① 品牌头图。未登录时标题是「点击登录」，白色胶囊是真正的点击目标 -->
+    <BrandHero
+      :title="userStore.isLoggedIn ? memberName : '点击登录'"
+      :slogan="userStore.isLoggedIn ? (companyName || '完善企业信息可开通账期') : '登录后查看专属价格'"
+      :show-login="!userStore.isLoggedIn"
+      @login="handleLogin"
+    />
+
+    <!-- ② 上叠白卡：我的订单五宫格。
+         padding 交给子元素（SectionHeader 自带左右内边距、宫格自带），
+         卡片自己不留 —— 否则两层内边距叠起来。 -->
+    <SurfaceCard overlap :padding="'0'">
+      <SectionHeader title="我的订单" more="全部订单" @more="goToOrderList('')" />
+      <view class="orders">
+        <view
+          v-for="o in ORDER_ENTRIES"
+          :key="o.status"
+          class="orders__item"
+          @tap="goToOrderList(o.status)"
         >
-          {{ userStore.userInfo.retailer_profile.company_name }}
-        </text>
-      </template>
+          <view class="orders__icon">
+            <AppIcon :name="o.icon" :size="40" tone="primary" />
+          </view>
+          <text class="orders__label">{{ o.label }}</text>
+        </view>
+      </view>
+    </SurfaceCard>
 
-      <!-- Not logged in -->
-      <template v-else>
-        <view class="profile-avatar-wrapper profile-avatar--default" @tap="handleLogin">
-          <text class="profile-avatar-emoji">👤</text>
-        </view>
-        <view class="profile-login-row" @tap="handleLogin">
-          <text class="profile-login-text">点击登录</text>
-          <text class="profile-login-arrow">›</text>
-        </view>
-      </template>
+    <!-- ③ 我的权益双栏 -->
+    <view class="benefit-wrap">
+      <BenefitCard
+        :main="benefitMain"
+        :side="benefitSide"
+        @main-tap="goToMember"
+        @side-tap="goToCoupons"
+      />
     </view>
 
-    <!-- ================================================================ -->
-    <!--  2. Order Overview Card (overlaps header via negative margin)     -->
-    <!-- ================================================================ -->
-    <view class="order-card">
-      <view class="order-card-header">
-        <text class="order-card-title">我的订单</text>
-        <text class="order-card-all" @tap="goToOrders('all')">查看全部 ›</text>
-      </view>
-      <view class="order-shortcuts">
-        <view class="order-shortcut" @tap="goToOrders('pending')">
-          <text class="order-shortcut-icon">📋</text>
-          <text class="order-shortcut-label">待付款</text>
-        </view>
-        <view class="order-shortcut" @tap="goToOrders('paid')">
-          <text class="order-shortcut-icon">📦</text>
-          <text class="order-shortcut-label">待发货</text>
-        </view>
-        <view class="order-shortcut" @tap="goToOrders('shipped')">
-          <text class="order-shortcut-icon">🚚</text>
-          <text class="order-shortcut-label">已发货</text>
-        </view>
-        <view class="order-shortcut" @tap="goToOrders('completed')">
-          <text class="order-shortcut-icon">⭐</text>
-          <text class="order-shortcut-label">已完成</text>
-        </view>
-        <view class="order-shortcut" @tap="goToRefund">
-          <text class="order-shortcut-icon">🔄</text>
-          <text class="order-shortcut-label">退款/售后</text>
+    <!-- ④ 分组菜单卡。padding: 0 才能让分隔线通到卡片边缘（SurfaceCard 的注释里点名的就是这一处） -->
+    <SurfaceCard :padding="'0'">
+      <view v-for="(group, gi) in MENU_GROUPS" :key="gi" class="menu">
+        <view v-if="gi > 0" class="menu__divider" />
+        <view v-for="item in group" :key="item.label" class="menu__item" @tap="item.action()">
+          <AppIcon :name="item.icon" :size="34" tone="primary" />
+          <text class="menu__label">{{ item.label }}</text>
+          <text v-if="item.value" class="menu__value">{{ item.value }}</text>
+          <AppIcon name="arrow-right" :size="26" tone="muted" />
         </view>
       </view>
-    </view>
+    </SurfaceCard>
 
-    <!-- ================================================================ -->
-    <!--  3. Menu Section 1                                               -->
-    <!-- ================================================================ -->
-    <view class="menu-card">
-      <view class="menu-item" @tap="navigateTo('/pages/mine/company')">
-        <text class="menu-icon">🏢</text>
-        <text class="menu-title">企业信息</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="navigateTo('/pages/mine/address')">
-        <text class="menu-icon">📍</text>
-        <text class="menu-title">收货地址</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="navigateTo('/pages/mine/member')">
-        <text class="menu-icon">💎</text>
-        <text class="menu-title">会员中心</text>
-        <view class="menu-right">
-          <text class="menu-level-tag">
-            {{ userStore.isLoggedIn ? userStore.levelLabel : '普通会员' }}
-          </text>
-          <text class="menu-arrow">›</text>
-        </view>
-      </view>
-      <view class="menu-item" @tap="navigateTo('/pages/mine/favorites')">
-        <text class="menu-icon">🛒</text>
-        <text class="menu-title">我的收藏</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="navigateTo('/pages/mine/history')">
-        <text class="menu-icon">👣</text>
-        <text class="menu-title">浏览记录</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item menu-item--last" @tap="navigateTo('/pages/mine/coupons')">
-        <text class="menu-icon">🎫</text>
-        <text class="menu-title">优惠券</text>
-        <text class="menu-arrow">›</text>
-      </view>
+    <!-- ⑤ 退出登录（仅登录后） -->
+    <view v-if="userStore.isLoggedIn" class="logout" @tap="handleLogout">
+      <text class="logout__text">退出登录</text>
     </view>
-
-    <!-- ================================================================ -->
-    <!--  4. Menu Section 2                                               -->
-    <!-- ================================================================ -->
-    <view class="menu-card">
-      <view class="menu-item" @tap="navigateTo('/pages/mine/contact')">
-        <text class="menu-icon">📞</text>
-        <text class="menu-title">联系客服</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @tap="navigateTo('/pages/mine/settings')">
-        <text class="menu-icon">⚙️</text>
-        <text class="menu-title">设置</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item menu-item--last" @tap="navigateTo('/pages/mine/help')">
-        <text class="menu-icon">❓</text>
-        <text class="menu-title">帮助中心</text>
-        <text class="menu-arrow">›</text>
-      </view>
-    </view>
-
-    <!-- ================================================================ -->
-    <!--  5. Logout Button (logged-in only)                               -->
-    <!-- ================================================================ -->
-    <view v-if="userStore.isLoggedIn" class="logout-section">
-      <view class="btn-logout" @tap="handleLogout">
-        <text class="btn-logout-text">退出登录</text>
-      </view>
-    </view>
-
-    <!-- ================================================================ -->
-    <!--  6. Version                                                      -->
-    <!-- ================================================================ -->
-    <view class="version-section">
-      <text class="version-text">蓓贝婴童 v1.0.0</text>
-    </view>
-
-    <!-- ================================================================ -->
-    <!--  7. Safe Area Bottom                                             -->
-    <!-- ================================================================ -->
-    <view class="mine-safe-bottom" :style="{ height: safeBottom + 'px' }" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import AppIcon from '../../components/AppIcon.vue'
+import BrandHero from '../../components/BrandHero.vue'
+import SurfaceCard from '../../components/SurfaceCard.vue'
+import SectionHeader from '../../components/SectionHeader.vue'
+import BenefitCard from '../../components/BenefitCard.vue'
 import { useUserStore } from '../../stores/user'
 import { useAppStore } from '../../stores/app'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
 
-// Init app store to get system info
+// 取系统信息。BrandHero 自己扛状态栏高度，读的是 appStore.statusBarHeight，
+// 不 init 就永远是 0，头图会被状态栏压住。
 appStore.init()
 
 // 自定义 tabBar 是每个页面各自渲染的一份实例，状态不共享。这里写下本页在
@@ -172,9 +82,16 @@ onShow(() => {
   uni.setStorageSync('tabbar_selected', 4)
 })
 
-const safeBottom = computed(() => Math.max(appStore.safeAreaBottom, 20))
+/**
+ * 昵称。
+ *
+ * 不用 store 的 `nickname` —— 那个 getter 的兜底是「未登录」，登录了但后端没返
+ * 昵称时会在头图上渲染出「未登录」三个字，比空白更糟。
+ */
+const memberName = computed(() => userStore.userInfo?.nickname || '蓓贝会员')
+const companyName = computed(() => userStore.userInfo?.retailer_profile?.company_name || '')
 
-// ── Login ───────────────────────────────────────────────────────────────────
+// ── Login / Logout ──────────────────────────────────────────────────────────
 async function handleLogin() {
   try {
     await userStore.login()
@@ -184,275 +101,154 @@ async function handleLogin() {
   }
 }
 
-// ── Logout ──────────────────────────────────────────────────────────────────
 function handleLogout() {
   uni.showModal({
     title: '提示',
     content: '确定要退出登录吗？',
     success: (res) => {
       if (res.confirm) {
+        // store 里的 logout 是纯本地清 token，不发请求（后端没有 logout 接口）
         userStore.logout()
       }
     }
   })
 }
 
-// ── Navigation ──────────────────────────────────────────────────────────────
-function goToOrders(status: string) {
-  uni.navigateTo({ url: `/pages/order/list?status=${status}` })
+// ── 订单入口 ────────────────────────────────────────────────────────────────
+// status 必须与 pages/order/list 的 tabs 对上：这一页原来写的是 `pending`，
+// 而订单页认的是 `pending_payment` —— 点「待付款」会落到「全部」，
+// 看起来像"就是没有待付款订单"。contract 测试会比对两边。
+const ORDER_ENTRIES = [
+  { status: 'pending_payment', label: '待付款',   icon: 'rmb-circle' },
+  { status: 'paid',            label: '待发货',   icon: 'bag' },
+  { status: 'shipped',         label: '已发货',   icon: 'car' },
+  { status: 'completed',       label: '已完成',   icon: 'checkmark-circle' },
+  { status: 'refunding',       label: '退款售后', icon: 'server-man' },
+]
+
+function goToOrderList(status: string) {
+  uni.navigateTo({ url: `/pages/order/list${status ? `?status=${status}` : ''}` })
 }
 
-function goToRefund() {
-  uni.navigateTo({ url: '/pages/order/list?status=refunding' })
+// ── 我的权益 ────────────────────────────────────────────────────────────────
+const benefitMain = computed(() => ({
+  title: '我的权益',
+  desc: `当前折扣 ${(userStore.discountRate * 10).toFixed(1)} 折`,
+  action: '查看权益',
+}))
+// 优惠券张数没有数据源（全站还没有 coupons 接口），与「积分」一样是占位
+const benefitSide = ref([
+  { icon: 'coupon',   title: '优惠券', desc: '可用 0 张' },
+  { icon: 'integral', title: '积分',   desc: '即将上线' },
+])
+
+// ── 分组菜单 ────────────────────────────────────────────────────────────────
+interface MenuItem {
+  icon: string
+  label: string
+  /** 右侧的次要文字，可选 */
+  value?: string
+  action: () => void
 }
 
-function navigateTo(url: string) {
-  uni.navigateTo({ url })
-}
+// 用 computed 而不是常量数组：会员中心那一行要跟着等级走。
+// （等级徽章原来在头图上，BrandHero 没有徽章位，挪到这一行）
+const MENU_GROUPS = computed<MenuItem[][]>(() => [
+  [
+    { icon: 'file-text', label: '企业信息', action: () => uni.navigateTo({ url: '/pages/mine/company/index' }) },
+    { icon: 'map',       label: '收货地址', action: () => uni.navigateTo({ url: '/pages/mine/address/index' }) },
+    {
+      icon: 'level',
+      label: '会员中心',
+      value: userStore.isLoggedIn ? userStore.levelLabel : '普通会员',
+      action: goToMember,
+    },
+  ],
+  [
+    { icon: 'heart',  label: '我的收藏', action: () => uni.navigateTo({ url: '/pages/mine/favorites/index' }) },
+    { icon: 'clock',  label: '浏览记录', action: () => uni.navigateTo({ url: '/pages/mine/history/index' }) },
+    { icon: 'coupon', label: '优惠券',   action: goToCoupons },
+  ],
+  [
+    // 客服是 tabBar 页（index 2）：只能 switchTab，navigateTo 是静默失败
+    { icon: 'phone',   label: '联系客服', action: () => uni.switchTab({ url: '/pages/ai-assistant/index' }) },
+    { icon: 'setting', label: '设置',     action: () => uni.navigateTo({ url: '/pages/mine/settings/index' }) },
+  ],
+])
+
+function goToMember()  { uni.navigateTo({ url: '/pages/mine/member/index' }) }
+function goToCoupons() { uni.navigateTo({ url: '/pages/mine/coupons/index' }) }
 </script>
 
-<style scoped>
-.mine-page {
-  background: #FFF8F0;
+<style scoped lang="scss">
+.page {
   min-height: 100vh;
-  font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
+  background: var(--bg-primary);
 }
 
-/* ========================================================================== */
-/*  1. HEADER — Coral Pink Gradient                                           */
-/* ========================================================================== */
-.profile-header {
-  background: linear-gradient(180deg, #e16531 0%, #f39a6d 100%);
-  padding: 40rpx 32rpx 60rpx;
-  border-radius: 0 0 40rpx 40rpx;
+// ── 订单五宫格 ────────────────────────────────
+.orders {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 0 var(--space-lg) var(--space-xl);
 }
-
-.profile-avatar-wrapper {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.5);
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-avatar {
-  width: 100%;
-  height: 100%;
-}
-
-.profile-avatar--default {
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.profile-avatar-emoji {
-  font-size: 60rpx;
-  line-height: 1;
-}
-
-.profile-nickname {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #ffffff;
-  margin-top: 16rpx;
-}
-
-.profile-level-badge {
-  margin-top: 8rpx;
-  padding: 4rpx 20rpx;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 50px;
-}
-
-.profile-level-text {
-  font-size: 22rpx;
-  color: #ffffff;
-}
-
-.profile-company {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 8rpx;
-}
-
-.profile-login-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-top: 16rpx;
-}
-
-.profile-login-text {
-  font-size: 32rpx;
-  color: #ffffff;
-  font-weight: 500;
-}
-
-.profile-login-arrow {
-  font-size: 36rpx;
-  color: rgba(255, 255, 255, 0.7);
-  margin-left: 8rpx;
-}
-
-/* ========================================================================== */
-/*  2. ORDER OVERVIEW CARD                                                    */
-/* ========================================================================== */
-.order-card {
-  background: #ffffff;
-  border-radius: 20px;
-  margin: -30rpx 24rpx 20rpx;
-  padding: 32rpx;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
-.order-card-header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 32rpx;
-}
-
-.order-card-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #4a3728;
-}
-
-.order-card-all {
-  font-size: 26rpx;
-  color: #7a6a5a;
-}
-
-.order-shortcuts {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-}
-
-.order-shortcut {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.order-shortcut-icon {
-  font-size: 44rpx;
-  line-height: 1.2;
-}
-
-.order-shortcut-label {
-  font-size: 22rpx;
-  color: #4a3728;
-  margin-top: 8rpx;
-}
-
-/* ========================================================================== */
-/*  3 & 4. MENU CARDS                                                         */
-/* ========================================================================== */
-.menu-card {
-  background: #ffffff;
-  border-radius: 20px;
-  margin: 0 24rpx 20rpx;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
-.menu-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 28rpx 32rpx;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.menu-item--last {
-  border-bottom: none;
-}
-
-.menu-icon {
-  font-size: 36rpx;
-  margin-right: 20rpx;
-  flex-shrink: 0;
-}
-
-.menu-title {
+.orders__item {
   flex: 1;
-  font-size: 28rpx;
-  color: #4a3728;
-}
-
-.menu-arrow {
-  font-size: 32rpx;
-  color: #c4b5a5;
-  flex-shrink: 0;
-}
-
-.menu-right {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  flex-shrink: 0;
 }
-
-.menu-level-tag {
-  font-size: 22rpx;
-  color: #e16531;
-  background: #FFF0F0;
-  padding: 4rpx 12rpx;
-  border-radius: 8px;
-  margin-right: 12rpx;
-}
-
-/* ========================================================================== */
-/*  5. LOGOUT BUTTON                                                          */
-/* ========================================================================== */
-.logout-section {
-  margin: 40rpx 24rpx;
-}
-
-.btn-logout {
-  width: 100%;
-  height: 88rpx;
-  border-radius: 50px;
-  background: #ffffff;
-  border: 1px solid #e16531;
+.orders__icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: var(--radius-circle);
+  background: var(--color-primary-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+.orders__label {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
 }
 
-.btn-logout-text {
-  font-size: 30rpx;
-  font-weight: 500;
-  color: #e16531;
+// ── 权益双栏 ──────────────────────────────────
+.benefit-wrap {
+  padding: var(--space-lg) var(--space-lg) 0;
 }
 
-/* ========================================================================== */
-/*  6. VERSION                                                                */
-/* ========================================================================== */
-.version-section {
+// ── 分组菜单 ──────────────────────────────────
+.menu__divider {
+  height: 1rpx;
+  background: var(--border-light);
+  margin-left: var(--space-2xl);
+}
+.menu__item {
   display: flex;
-  justify-content: center;
-  margin: 20rpx 0 40rpx;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 28rpx var(--space-lg);
+}
+.menu__label {
+  flex: 1;
+  font-size: var(--font-base);
+  color: var(--text-primary);
+}
+.menu__value {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
 }
 
-.version-text {
-  font-size: 22rpx;
-  color: #c4b5a5;
+// ── 退出登录 ──────────────────────────────────
+.logout {
+  margin: var(--space-xl) var(--space-lg) 0;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 28rpx;
+  text-align: center;
 }
-
-/* ========================================================================== */
-/*  7. SAFE AREA BOTTOM                                                       */
-/* ========================================================================== */
-.mine-safe-bottom {
-  width: 100%;
+.logout__text {
+  font-size: var(--font-base);
+  color: var(--color-primary);
 }
 </style>
