@@ -438,3 +438,49 @@ describe('tabBar 页与普通页的跳转方式', () => {
     expect(calls, '一个跳转调用都没扫到，说明正则或前缀写法变了').toBeGreaterThanOrEqual(20)
   })
 })
+
+/**
+ * 原生组件的运行时全局。
+ *
+ * `src/custom-tab-bar/` 是**原样复制**到输出目录的（uni-app 不编译它），
+ * 所以这个文件里的标识符按微信运行时的原样解析 —— 编译过的页面会被
+ * 重写成 `e.index.switchTab`（走 import），而这个文件没有编译这一步。
+ *
+ * 微信只提供 `wx`。uni-app 运行时在产物里挂的是 `globalThis.wx` /
+ * `globalThis.document` / `globalThis.harmonyChannel`，**没有** `globalThis.uni`
+ * —— 所以这里写 `uni.xxx` 会抛 `ReferenceError`，且因为它在事件回调里，
+ * 表现为「点 tab 高亮变了一下、页面不动」，没有任何报错提示。
+ */
+describe('原生 custom-tab-bar 不使用未定义的全局 uni', () => {
+  const SRC = () => readIfExists(join(ROOT, 'custom-tab-bar', 'index.js'))
+
+  it('文件读得到', () => {
+    expect(SRC(), 'custom-tab-bar/index.js 读不到').not.toBe('')
+  })
+
+  it('不出现 uni.xxx 调用', () => {
+    const hits = [...SRC().matchAll(/(?<![\w.$])uni\s*\.\s*([A-Za-z_$][\w$]*)/g)].map(
+      (m) => m[1],
+    )
+    expect(
+      [...new Set(hits)],
+      '这是原样复制的原生文件，没有编译步骤，`uni` 在微信里不存在 —— ' +
+        '用 `wx` 代替（`wx.getStorageSync` 与页面的 `uni.setStorageSync` 是同一个存储区）',
+    ).toEqual([])
+  })
+
+  it('只用 wx 前缀调用原生 API（证明上面那条不是空转）', () => {
+    const hits = [...SRC().matchAll(/(?<![\w.$])wx\s*\.\s*([A-Za-z_$][\w$]*)/g)].map(
+      (m) => m[1],
+    )
+    expect(
+      new Set(hits),
+      '一个 wx.* 调用都没有 —— 要么文件被改了，要么正则失灵了',
+    ).toEqual(new Set(['getStorageSync', 'setStorageSync', 'switchTab']))
+  })
+
+  it('跳转用的是切换 tab 的 API，不是普通跳转', () => {
+    // navigateTo / redirectTo 跳 tabBar 页是静默失败，这里必须 switchTab。
+    expect(SRC(), '跳转没有用 switchTab').toMatch(/wx\.switchTab\s*\(\s*\{/)
+  })
+})
