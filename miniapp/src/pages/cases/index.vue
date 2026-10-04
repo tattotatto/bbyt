@@ -80,7 +80,7 @@ import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { getCaseList, getCaseTags } from '../../api/cases'
-import type { DesignCase } from '../../api/cases'
+import type { DesignCase, CaseListParams } from '../../api/cases'
 import { PAGE_SIZE } from '../../utils/constants'
 
 const loading = ref(true)
@@ -123,7 +123,7 @@ async function loadCases(isRefresh = false) {
   errorMsg.value = ''
 
   try {
-    const params: any = { page: page.value, page_size: 20 }
+    const params: CaseListParams = { page: page.value, page_size: 20 }
     if (activeStyleTag.value) params.style = activeStyleTag.value
     if (activeCategoryTag.value) params.category_tag = activeCategoryTag.value
     if (keyword.value.trim()) params.keyword = keyword.value.trim()
