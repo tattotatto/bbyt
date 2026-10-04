@@ -79,7 +79,7 @@ import SearchBar from '../../components/SearchBar.vue'
 import CaseCard from '../../components/CaseCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { getCaseList, getStyleTags, getCategoryTags } from '../../api/cases'
+import { getCaseList, getCaseTags } from '../../api/cases'
 import type { DesignCase } from '../../api/cases'
 import { PAGE_SIZE } from '../../utils/constants'
 
@@ -102,11 +102,12 @@ const allCategoryTags = computed(() => ['全部类型', ...categoryTags.value])
 
 async function loadTags() {
   try {
-    const [sRes, cRes] = await Promise.all([getStyleTags(), getCategoryTags()])
-    styleTags.value = sRes.data || []
-    categoryTags.value = cRes.data || []
+    const res = await getCaseTags()
+    styleTags.value = res.data?.style_tags || []
+    categoryTags.value = res.data?.category_tags || []
   } catch {
-    // Tags are non-critical; fail silently
+    // 标签是非关键路径。接口失败或后端仍是旧版本时，
+    // 保持两个数组为空 —— 筛选器只剩「全部风格」/「全部类型」，页面照常可用。
   }
 }
 
@@ -123,7 +124,7 @@ async function loadCases(isRefresh = false) {
 
   try {
     const params: any = { page: page.value, page_size: 20 }
-    if (activeStyleTag.value) params.style_tag = activeStyleTag.value
+    if (activeStyleTag.value) params.style = activeStyleTag.value
     if (activeCategoryTag.value) params.category_tag = activeCategoryTag.value
     if (keyword.value.trim()) params.keyword = keyword.value.trim()
 
