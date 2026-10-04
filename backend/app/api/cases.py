@@ -38,29 +38,42 @@ async def list_cases(
     category_tag: str | None = Query(None, description="按类型筛选: 婴童游泳馆/母婴生活馆/儿童乐园"),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(DesignCase).where(DesignCase.status == "published")
-    count_query = select(func.count()).select_from(DesignCase).where(DesignCase.status == "published")
-
-    # JSON array contains filter - use PostgreSQL @> or simple LIKE for SQLite compat
-    if style:
-        query = query.where(DesignCase.style_tags.contains([style]))
-        count_query = count_query.where(DesignCase.style_tags.contains([style]))
+    base_filters = [DesignCase.status == "published"]
     if area:
-        query = query.where(DesignCase.store_area_range == area)
-        count_query = count_query.where(DesignCase.store_area_range == area)
-    if category_tag:
-        query = query.where(DesignCase.category_tags.contains([category_tag]))
-        count_query = count_query.where(DesignCase.category_tags.contains([category_tag]))
+        base_filters.append(DesignCase.store_area_range == area)
 
-    total_result = await db.execute(count_query)
-    total = total_result.scalar() or 0
-
-    offset = (page - 1) * page_size
-    result = await db.execute(
-        query.order_by(DesignCase.sort_order.desc(), DesignCase.created_at.desc())
-        .offset(offset).limit(page_size)
+    ordered = (
+        select(DesignCase)
+        .where(*base_filters)
+        .order_by(DesignCase.sort_order.desc(), DesignCase.created_at.desc())
     )
-    cases = result.scalars().all()
+
+    if style or category_tag:
+        # 标签列是通用 JSON（非 JSONB）：PG 上没有 @>，SQLite 上也没有统一的包含运算符。
+        # JSON.contains([x]) 会退化成子串 LIKE，模式是序列化后的 ["x"]，只对「恰好是单元素
+        # 数组」的记录成立——多标签记录永远筛不到。而改写成 cast 成文本再 LIKE 也不行：
+        # 通用 JSON 用 json.dumps 默认参数序列化，非 ASCII 会被转义成 \uXXXX 落库，
+        # 且 PG 的 LIKE 把反斜杠当默认转义符，两个库要分别转义，本地根本验不了。
+        # 所以在应用层过滤：两个库上语义完全一致，本地 SQLite 测试即代表线上行为。
+        # 代价是带标签筛选时整表取回内存——设计案例是策展型图集（几十条量级），
+        # 且本文件 list_tags 已经是同样整体加载的写法，量级上站得住。
+        result = await db.execute(ordered)
+        cases = [
+            c
+            for c in result.scalars().all()
+            if (not style or style in (c.style_tags or []))
+            and (not category_tag or category_tag in (c.category_tags or []))
+        ]
+        total = len(cases)
+        cases = cases[(page - 1) * page_size: page * page_size]
+    else:
+        count_query = select(func.count()).select_from(DesignCase).where(*base_filters)
+        total_result = await db.execute(count_query)
+        total = total_result.scalar() or 0
+
+        offset = (page - 1) * page_size
+        result = await db.execute(ordered.offset(offset).limit(page_size))
+        cases = result.scalars().all()
 
     return APIResponse.ok(data=PaginatedResponse(
         items=[CaseListOut.model_validate(c) for c in cases],

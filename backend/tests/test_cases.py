@@ -213,3 +213,48 @@ async def test_list_cases_envelope_fields(client: AsyncClient):
     assert set(data.keys()) == {"items", "total", "page", "page_size"}
     assert "list" not in data
     assert isinstance(data["items"], list)
+
+
+@pytest.mark.asyncio
+async def test_list_cases_style_filter_matches_multi_tag_arrays(client: AsyncClient):
+    """多标签数组里的标签必须筛得到——目标标签不在数组第一个也一样。
+
+    旧的 JSON.contains([x]) 在通用 JSON 列上退化成子串 LIKE，模式是 ["x"]，
+    只对「恰好是单元素数组」的记录成立，所以多标签记录永远筛不到。
+    """
+    token = await login_admin(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    await client.post("/api/v1/cases/", json={
+        "title": "多标签-目标在最后", "images": ["url"],
+        "category_tags": ["儿童房", "游戏区"], "style_tags": ["自然原木", "ins风"],
+        "store_area_range": "50-100㎡",
+    }, headers=headers)
+    await client.post("/api/v1/cases/", json={
+        "title": "单标签", "images": ["url"],
+        "category_tags": ["游戏区"], "style_tags": ["ins风"],
+        "store_area_range": "50-100㎡",
+    }, headers=headers)
+    await client.post("/api/v1/cases/", json={
+        "title": "不含目标标签", "images": ["url"],
+        "category_tags": ["游戏区"], "style_tags": ["自然原木"],
+        "store_area_range": "50-100㎡",
+    }, headers=headers)
+
+    resp = await client.get("/api/v1/cases/?style=ins风&page_size=100")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    titles = [c["title"] for c in data["items"]]
+    assert "多标签-目标在最后" in titles
+    assert "单标签" in titles
+    assert "不含目标标签" not in titles
+    assert all("ins风" in c["style_tags"] for c in data["items"])
+
+    # total 必须是「筛选后」的条数，否则前端分页会以为还有下一页
+    assert data["total"] == len(titles)
+
+    # 类型标签同理：目标不在第一个也要筛得到
+    resp = await client.get("/api/v1/cases/?category_tag=儿童房&page_size=100")
+    assert resp.status_code == 200
+    items = resp.json()["data"]["items"]
+    assert any(c["title"] == "多标签-目标在最后" for c in items)
