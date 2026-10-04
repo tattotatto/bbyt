@@ -1,8 +1,11 @@
 services:
   api:
     build: .
+    image: hxmall-api:latest
     ports:
       - "7000:7000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/hxmall
       - REDIS_URL=redis://redis:6379/0

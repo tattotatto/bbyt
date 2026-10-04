@@ -2,6 +2,7 @@
 node_modules/
 dist/
 *.tar.gz
+*.tar
 *.zip
 
 # Python
@@ -14,6 +15,8 @@ venv/
 # Env & secrets
 .env
 .env.local
+.env.production
+.env.staging
 
 # Runtime data
 uploads/
