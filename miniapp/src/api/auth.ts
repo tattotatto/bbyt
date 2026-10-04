@@ -30,7 +30,5 @@ export const getUserProfile = () => http.get<UserProfile>('/users/me')
 export const updateUserProfile = (data: RetailerProfileUpdate) =>
   http.put<UserProfile>('/users/me/profile', data)
 
-export const logout = () => http.post('/auth/logout')
-
 export const refreshToken = (refresh_token: string) =>
   http.post<{ access_token: string; refresh_token: string }>('/auth/refresh', { refresh_token })
