@@ -107,12 +107,12 @@ function onBlur() {
   font-family: -apple-system, "SF Pro Rounded", "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
+/* 图标的外观（尺寸、颜色）由 AppIcon 的 props 决定 —— 这里不再写
+   color/font-size，否则它们会是一份和 tone="muted" 不一致的第二真相
+   （旧值 #7a6a5a，muted 是 #a89a8a）。只留布局。 */
 .search-bar__icon {
-  color: #7a6a5a;
-  font-size: 32rpx;
   margin-right: 12rpx;
   flex-shrink: 0;
-  line-height: 1;
   display: flex;
   align-items: center;
 }
