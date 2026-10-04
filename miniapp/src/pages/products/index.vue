@@ -131,6 +131,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import { getCategories, getProductList } from '../../api/products'
 import type { ProductListItem, ProductListParams, Category } from '../../api/products'
 import { AGE_RANGES, PAGE_SIZE } from '../../utils/constants'
+import { mergeProductPage } from '../../utils/product-list'
 
 // ── State ──────────────────────────────────────────────
 const loading = ref(true)
@@ -254,20 +255,19 @@ async function loadProducts(isRefresh = false) {
     if (sortParam.value) params.sort = sortParam.value
 
     const res = await getProductList(params)
-    let list = res.data.items || []
 
-    // 有货与否是客户端过滤：后端 /products 没有这个参数
-    if (onlyInStock.value) {
-      list = list.filter((p) => (p.stock ?? 0) > 0)
-    }
-
-    if (isRefresh || page.value === 1) {
-      products.value = list
-    } else {
-      products.value = [...products.value, ...list]
-    }
-
-    hasMore.value = list.length >= PAGE_SIZE
+    // 合并 + 分页判定交给纯函数。原本这两件事写在这里，其中 hasMore 用的是
+    // **客户端过滤后**的条数：第 1 页 20 条里只要有 1 条缺货，过滤后 19 < 20
+    // 就判定「已经到底了」，后面几页里那些有货的商品再也翻不出来。
+    // 提成纯函数是为了让 utils/__tests__/product-list.test.ts 能钉死它。
+    const merged = mergeProductPage(res.data.items, products.value, {
+      page: page.value,
+      pageSize: PAGE_SIZE,
+      isRefresh,
+      onlyInStock: onlyInStock.value,
+    })
+    products.value = merged.items
+    hasMore.value = merged.hasMore
   } catch (err: any) {
     errorMsg.value = err.message || err.msg || '加载失败'
     if (page.value > 1) page.value--
@@ -315,7 +315,16 @@ onShow(() => {
 
 onLoad(() => {
   loadCategories()
-  loadProducts(true)
+
+  // 冷启动时 onShow 紧随 onLoad —— 如果这次进来带着首页交接的筛选条件，
+  // 就让 onShow 去发这一次请求。否则两边各发一次：一个不带 category_id、
+  // 一个带，两个请求同时在飞，**后返回的那个决定列表**。带条件的先回来的话，
+  // 最终渲染的是未筛选的列表 —— 正好是这轮要修掉的那类静默失效。
+  const hasHandoff = !!(
+    uni.getStorageSync('products_pending_category') ||
+    uni.getStorageSync('products_pending_keyword')
+  )
+  if (!hasHandoff) loadProducts(true)
 })
 
 onPullDownRefresh(() => {

@@ -55,7 +55,7 @@ function currentIndex() {
   const route = currentRoute()
   const i = TABS.findIndex((t) => t.pagePath.replace(/^\//, '') === route)
   if (i >= 0) return i
-  // wx.getStorageSync 与页面的 uni.setStorageSync 是同一个存储区
+  // 页面侧（用 uni API 编译出来的那个 `setStorageSync`）与本文件写的是同一个存储区
   return Number(wx.getStorageSync(SELECTED_KEY)) || 0
 }
 
@@ -90,8 +90,12 @@ Component({
       const index = Number(e.currentTarget.dataset.index)
       if (!(index >= 0) || index >= TABS.length) return
       this.setData({ selected: index })
-      uni.setStorageSync(SELECTED_KEY, index)
-      uni.switchTab({ url: TABS[index].pagePath })
+      // 用 wx 而不是 uni：本文件原样复制、不编译，`uni` 在这里没有定义
+      // （编译过的页面会把对 uni 的调用改写成 import 进来的对象，这个文件不享受这一步）。
+      // 微信运行时的全局只有 wx，写 uni 会在这一行抛 ReferenceError；
+      // 又因为它在点击回调里，表现成「高亮闪了一下、页面不动」，没有任何报错。
+      wx.setStorageSync(SELECTED_KEY, index)
+      wx.switchTab({ url: TABS[index].pagePath })
     },
   },
 })

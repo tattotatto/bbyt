@@ -154,3 +154,42 @@ describe('跨页 storage 交接', () => {
     ).toEqual(HANDOFFS.map((h) => h.key).sort())
   })
 })
+
+/**
+ * 冷启动时的重复请求。
+ *
+ * 商品页的 `onShow` 要消费交接参数（见上），`onLoad` 又要做首次加载 ——
+ * 冷启动时两者紧挨着触发。如果 `onLoad` 不看交接参数就无条件发请求，
+ * 这两次会同时在飞：一个不带 `category_id`、一个带。`loadProducts` 没有
+ * 并发保护，两边都以 `products.value = list` 收口，**后返回的那个决定列表**。
+ * 带条件的先回来时，最终渲染的是未筛选的列表 —— 正是这轮要修掉的那类静默失效。
+ *
+ * 这条断言的是**结构**（onLoad 里发请求之前先看交接参数），不是运行时行为 ——
+ * 本项目的测试环境跑不了页面生命周期。它能拦住"改回无条件调用"这个具体回退，
+ * 但拦不住别的写法；真机上的观感仍要人看。
+ */
+describe('商品页 onLoad 不与 onShow 重复发一次请求', () => {
+  const PRODUCTS = 'pages/products/index.vue'
+
+  it('onLoad 里先看交接参数，再决定要不要发请求', () => {
+    const text = page(PRODUCTS)
+    const body = blockAfterCall(text, 'onLoad')
+    expect(body, `${PRODUCTS} 没有 onLoad(() => {…})`).not.toBeNull()
+
+    const call = body!.indexOf('loadProducts(')
+    expect(call, 'onLoad 里没有 loadProducts 调用 —— 首次加载没了？').toBeGreaterThanOrEqual(0)
+
+    const guard = body!.indexOf('products_pending_')
+    expect(
+      guard,
+      'onLoad 里没有看交接参数。冷启动时它和 onShow 会各发一次请求，' +
+        '两个请求竞速，后返回的那个决定列表 —— 带条件的先回来时' +
+        '最终渲染的是未筛选的商品。',
+    ).toBeGreaterThanOrEqual(0)
+
+    expect(
+      guard,
+      '交接检查必须排在 loadProducts 之前，否则拦不住那次重复请求',
+    ).toBeLessThan(call)
+  })
+})

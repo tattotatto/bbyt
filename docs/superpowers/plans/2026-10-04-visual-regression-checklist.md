@@ -63,7 +63,7 @@ tabBar 页（`tabBar.custom: true`）：home / cases / ai-assistant / products /
 | 单元测试 | `npm test` | **14 个测试文件，125/125 通过，exit 0** |
 | 类型检查 | `npx vue-tsc --noEmit` | **无输出（无错误）** |
 | 小程序构建 | `npm run build:mp-weixin` | **exit 0，`DONE Build complete.`**（仅有既存的 Sass `@import` 弃用告警） |
-| 图标字体内联 | `app.wxss` 计数 | `data:font/truetype` **×1**，`at.alicdn.com` **×0** —— 远程 `@font-face` 已被 base64 内联覆盖 |
+| 图标字体内联 | `app.wxss` 计数 | `data:font/truetype` **×1**，`at.alicdn.com` **×0** —— 只证明**样式表里**没有远程字体 URL。**不等于**运行时不会去拉远程字体，见下方问题 7 |
 | AppIcon 产出 | `dist/build/mp-weixin/components/` | `AppIcon.{js,json,wxml}` 均存在 |
 | 页面数 | `src/pages.json` | **20**（与本文件表格一致） |
 | 上线开关 | `.env.production` | `VITE_DEMO_FALLBACK=false`（**工作区与 HEAD 均已确认**） |
@@ -155,6 +155,36 @@ Task 14 的 ledger 明确交接了下面几件**静态检查做不到、必须�
 - **Ruling H —— 帮助中心变成孤儿页。** `pages/mine/help/index.vue` 现在**没有任何入口**指向它（菜单里没有这一项）。需要确认是否补入口，或确认它已废弃。
 - **Ruling G —— 退款售后落到「全部」。** 我的页「退款售后」入口传 `status=refunding`，而订单页 tabs 里没有 `refunding`（它是契约测试里 `allowed` 额外放行的值）。需要确认订单页对该值的处理符合预期，而不是静默落到「全部」列表。
 - 另有 3 项视觉细节（图标居中、分隔线、退出登录后回到未登录态）同样待真机确认。
+
+---
+
+### 7. 【更正上面的表格】图标字体「已内联覆盖远程」这个说法，证据不足
+
+表格里那行「远程 `@font-face` 已被 base64 内联覆盖」是**我写的，写过头了**。
+`app.wxss` 里 `at.alicdn.com` 计数为 0，只能证明**样式表**里没有远程字体 URL；
+它证明不了运行时不拉远程字体 —— 那个 URL 仍然在 `common/vendor.js` 里，
+且 `uview-plus/components/u-icon/util.js` 在 `MP-WEIXIN` 下创建 u-icon 时会调
+`uni.loadFontFace({ family: 'uicon-iconfont', source: 'url(https://at.alicdn.com/…)' })`。
+
+大概率没问题（没有 `downloadFile` 白名单时那次加载会静默失败，而内联的 base64
+字体应该仍然生效），但**这正是 Task 1 的真机闸门要盯的那条路径** ——
+用「计数为 0」当成「已解决」是把未验证读成了已验证，与本文件开头的自我要求相悖。
+
+### 8. 【已修】最终评审发现：自定义 tabBar 调用了不存在的全局 `uni`
+
+**现象：** `src/custom-tab-bar/index.js` 的点击处理里调 `uni.setStorageSync` /
+`uni.switchTab`。这个文件是**原样复制**到产物里的（uni-app 不编译它），
+所以 `uni` 按微信运行时的原样解析 —— 而微信只提供 `wx`。
+
+**证据：** 全产物里 `globalThis.X` 的赋值只有 `wx` / `document` / `harmonyChannel`，
+**没有** `globalThis.uni`；编译过的页面会把 `uni.switchTab` 重写成
+`e.index.switchTab`（走 import），这个文件没有这一步。
+
+**后果：** 点底栏会抛 `ReferenceError`，且因为它在点击回调里 ——
+表现为「高亮闪一下、页面不动」，没有任何报错。**整个底部导航是死的。**
+
+**修复：** 改用 `wx.setStorageSync` / `wx.switchTab`（同一个存储区，语义相同）。
+新增结构性测试钉住它（`utils/__tests__/tabbar.test.ts`）。
 
 ---
 

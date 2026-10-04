@@ -182,11 +182,29 @@ describe('我的页', () => {
 
     // 旧代码这里写的是 'pending'，而订单页认的是 'pending_payment' ——
     // 两字之差，点「待付款」落到「全部」，看起来像"就是没有待付款订单"。
-    const allowed = new Set([...orderTabValues(), 'refunding'])
+    //
+    // 'refunding' 是**已知且唯一**的例外：订单页的 tabs 里没有退款一档，
+    // 后端也没有这个状态，所以点「退款售后」会落到「全部」且不高亮。
+    // 这是本任务范围外的既有行为（订单页属于那 15 个范围外页面），
+    // 已记入 ledger 的 Ruling G 和 Task 15 的视觉回归记录。
+    //
+    // 写成一份显式的例外清单，而不是把字面量直接塞进 allowed：
+    // 一旦出现**第二个**订单页不认的状态值，下面这条就红 ——
+    // 白名单不会把新问题一起吞掉。
+    const KNOWN_UNSUPPORTED = ['refunding']
+    const allowed = new Set([...orderTabValues(), ...KNOWN_UNSUPPORTED])
     const unknown = statuses.filter((s) => !allowed.has(s))
     expect(
       unknown,
       `订单页认的是 ${[...orderTabValues()].join(' / ')}：\n  ${unknown.join('\n  ')}`,
+    ).toEqual([])
+
+    // 反向断言：例外必须还是必要的。订单页哪天补上退款 tab，这条会红，
+    // 提醒把 KNOWN_UNSUPPORTED 清空 —— 否则例外会一直躺在那里没人收。
+    const nowSupported = KNOWN_UNSUPPORTED.filter((s) => orderTabValues().includes(s))
+    expect(
+      nowSupported,
+      `订单页现在认得这些值了，请从 KNOWN_UNSUPPORTED 里删掉：${nowSupported.join(' / ')}`,
     ).toEqual([])
 
     expect(
