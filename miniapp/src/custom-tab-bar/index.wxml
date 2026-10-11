@@ -10,15 +10,14 @@
       bindtap="switchTo"
     >
       <block wx:if="{{!item.raised}}">
-        <!-- 颜色写死成十六进制而不是 var(--…)：u-icon 的 color 是 prop，
-             最终落到元素的行内 style 上，值必须是一个确定的颜色字符串。
-             这两个值与 AppIcon.vue 里 TONE_COLORS 的 primary / muted 一致，
-             tabbar.test.ts 会比对，漂了就红。 -->
-        <u-icon
-          name="{{selected === index ? item.iconActive : item.icon}}"
-          size="44rpx"
-          color="{{selected === index ? '#e16531' : '#a89a8a'}}"
-        />
+        <!-- 原生 <text> 而不是 <u-icon>：后者是编译过的 uni-app 组件，
+             它的 props 只走 u-p 通道，原生 wxml 传不进去 —— 传进去的
+             name 是 undefined，图标渲染成空串，且没有任何报错。
+             完整推演见 index.js 顶部「为什么底栏不能直接用 <u-icon>」。
+             字形码点来自 index.js 的 GLYPHS，颜色/字号在 index.wxss。 -->
+        <text
+          class="tabbar__icon {{selected === index ? 'tabbar__icon--active' : ''}}"
+        >{{selected === index ? item.glyphActive : item.glyph}}</text>
         <text class="tabbar__label {{selected === index ? 'tabbar__label--active' : ''}}">{{item.text}}</text>
       </block>
     </view>
@@ -26,6 +25,6 @@
 
   <!-- 凸起圆：绝对定位压在白底栏上，无描边 -->
   <view class="tabbar__raised" data-index="{{raisedIndex}}" bindtap="switchTo">
-    <u-icon name="{{tabs[raisedIndex].iconActive}}" size="56rpx" color="#ffffff" />
+    <text class="tabbar__icon tabbar__icon--raised">{{tabs[raisedIndex].glyphActive}}</text>
   </view>
 </view>

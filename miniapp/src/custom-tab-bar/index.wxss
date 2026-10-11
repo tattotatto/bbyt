@@ -1,3 +1,10 @@
+@import "./iconfont.wxss";
+/* ↑ 图标字体必须由组件自己注册，原因见 iconfont.wxss 顶部。
+   这行是全文件的**第一行**（连注释都不许在它前面）：CSS/WXSS 要求
+   @import 排在所有规则之前，写到中间会被整条忽略，表现与没写完全一样。
+   按规范注释会先被剥掉、不影响 @import，但微信那套 WXSS 编译器不保证
+   会这么做 —— 这一整类失效都是静默的，不值得赌。 */
+
 /**
  * 自定义 tabBar 的样式。
  *
@@ -48,6 +55,44 @@
 /* 凸起圆占一个专属位置，但不渲染任何内容 */
 .tabbar__item--placeholder {
   pointer-events: none;
+}
+
+/**
+ * 图标：原生 <text> + 图标字体（不用 u-icon 的原因见 index.js 顶部）。
+ *
+ * font-family 指向的 uicon-iconfont 由本文件顶部 @import 进来的
+ * iconfont.wxss 注册 —— **不能指望全局**：自定义组件有样式隔离，
+ * app.wxss 里的 @font-face 进不来；uview-plus 运行时的
+ * `loadFontFace({ global: true })` 也只在 u-icon 实例化时才触发，
+ * 而底栏已经没有 u-icon 了。曾经按「字体是全局的」写，结果就是
+ * 44rpx 的格子占住了、里面一点墨迹都没有（2026-10-11 23:49 截图）。
+ *
+ * height 与 line-height 都钉死 44rpx：字形取不到时（抄错码点、字体没加载）
+ * 也占住这一格，底栏几何按 spec §6.2 保持不变
+ * （上 18 + 图标 44 + 间距 6 + 文字 24 + 下 22 = 114），不会塌成一条。
+ */
+.tabbar__icon {
+  font-family: uicon-iconfont;
+  font-size: 44rpx;
+  line-height: 44rpx;
+  height: 44rpx;
+  color: var(--text-muted, #b0a090);
+}
+
+/* 选中态与旁边的 label 用同一个 token：图标和文字是一个视觉单元。
+   旧实现是图标 #a89a8a（抄 AppIcon 的 muted）、文字 --text-muted #b0a090，
+   这点色差是 u-icon 只能收颜色字符串留下的；现在两边都归 token 管，
+   品牌色再变时（如 2026-10-11 的 #FF7B7B → #e16531）两处一起跟着走。 */
+.tabbar__icon--active {
+  color: var(--color-primary, #e16531);
+}
+
+/* 凸起圆里的白图标。白是白，不是品牌色，所以不挂 token。 */
+.tabbar__icon--raised {
+  font-size: 56rpx;
+  line-height: 56rpx;
+  height: 56rpx;
+  color: #FFFFFF;
 }
 
 .tabbar__label {

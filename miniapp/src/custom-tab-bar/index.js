@@ -13,6 +13,50 @@
  */
 const SELECTED_KEY = 'tabbar_selected'
 
+/**
+ * 图标字形表：uview-plus 的图标名 → 字体里的字形码点。
+ *
+ * ── 为什么底栏不能直接用 <u-icon> ──────────────────────────────────────
+ *
+ * uview-plus 的 u-icon 是**编译过的** uni-app 组件，它的 Vue props 只走
+ * uni-app 的私有通道。编译产物里用它的写法是
+ * `<u-icon u-i="…" bind:__l="__l" u-p="{{…}}"/>`，运行时按
+ * `this.$vm = Iu({ props: gu(properties, isPage(this)) })` 取 props ——
+ * 其中非页面（也就是自定义组件）那一支取的是 `properties.uP`，
+ * **原生 wxml 属性 name / size / color 一个都不读**。
+ *
+ * 而本文件是原样复制的原生组件，永远不会发 u-p。所以
+ * `<u-icon name="home" size="44rpx" color="#e16531">` 传进去的 name 是
+ * undefined：`icons['uicon-undefined']` 取不到字形，`{{f}}` 渲染成空串，
+ * `<text class="u-icon__icon">`（display:flex、内容是空文本节点）高度塌成 0，
+ * 底栏就只剩文字标签 —— 不报错，只是图标不见了。
+ * （2026-10-11 开发者工具实测：底栏白条上沿到标签之间只有内边距，
+ *   没有 44rpx 的图标盒；同一页面上 AppIcon 里的 u-icon 正常，
+ *   因为 AppIcon 是编译过的组件，走的是 u-p。）
+ *
+ * 所以这里改成原生 `<text>` + 图标字体：颜色和字号回到 CSS 手里，
+ * 不再需要任何 props 通道。
+ *
+ * ── 抄一份字形码点的代价 ──────────────────────────────────────────────
+ *
+ * 码点抄错、或 uview-plus 升级换了字形，表现同样是**一片空白且无报错**，
+ * 只能靠 `utils/__tests__/tabbar.test.ts` 逐字比对这张表。
+ *
+ * 写成 \uXXXX 转义而不是字面 PUA 字符：字面字符在这个手写文件里既不可见、
+ * 又容易被编辑器的编码转换弄坏，转义形式至少是可审阅、可 diff 的。
+ */
+const GLYPHS = {
+  home: '\ue965',
+  'home-fill': '\ue964',
+  photo: '\ue98d',
+  'photo-fill': '\ue98b',
+  'kefu-ermai': '\ue656',
+  bag: '\ue619',
+  'bag-fill': '\ue617',
+  account: '\ue628',
+  'account-fill': '\ue614',
+}
+
 const TABS = [
   { pagePath: '/pages/home/index',         text: '首页', icon: 'home',       iconActive: 'home-fill',    raised: false },
   { pagePath: '/pages/cases/index',        text: '案例', icon: 'photo',      iconActive: 'photo-fill',   raised: false },
@@ -22,6 +66,18 @@ const TABS = [
 ]
 
 const RAISED_INDEX = TABS.findIndex((t) => t.raised)
+
+/**
+ * 交给 wxml 的那份数据：把图标名翻成字形。
+ *
+ * WXML 的表达式里不能调函数，所以名字→字形的翻译必须在这里做完。
+ * TABS 里只留图标名（那是唯一事实来源），字形由 GLYPHS 现查 —— 两份表
+ * 各自写一遍的话，改了一处忘了另一处就是一片空白。
+ */
+const DISPLAY_TABS = TABS.map((t) => Object.assign({}, t, {
+  glyph: GLYPHS[t.icon],
+  glyphActive: GLYPHS[t.iconActive],
+}))
 
 /**
  * 不显示底栏的页面。
@@ -66,7 +122,7 @@ function isHidden() {
 
 Component({
   data: {
-    tabs: TABS,
+    tabs: DISPLAY_TABS,
     raisedIndex: RAISED_INDEX,
     selected: 0,
     // 初值 false，attached 里按当前路由纠正。取不到路由时宁可多显示一帧

@@ -261,12 +261,31 @@ describe('客服页不显示底栏', () => {
  * 这带来两个别处没有的失配风险，各测一条。
  */
 
-const UV_ICONS = (() => {
-  const src = readIfExists(
-    join(ROOT, '..', 'node_modules', 'uview-plus', 'components', 'u-icon', 'icons.js'),
+/**
+ * uview-plus 的图标集。
+ *
+ * icons.js 里的值可能是 `\uXXXX` 转义、也可能是字面 PUA 字符，两种写法先
+ * 统一还原成字符再比 —— 否则比的是写法，不是字形。
+ */
+const UV_ICON_SRC = readIfExists(
+  join(ROOT, '..', 'node_modules', 'uview-plus', 'components', 'u-icon', 'icons.js'),
+)
+
+/** `''` → 对应的字符 */
+function unescapeGlyph(s: string): string {
+  return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h: string) =>
+    String.fromCharCode(parseInt(h, 16)),
   )
-  return new Set([...src.matchAll(/'uicon-([a-z0-9-]+)':/g)].map((m) => m[1]))
-})()
+}
+
+const UV_ICONS = new Set([...UV_ICON_SRC.matchAll(/'uicon-([a-z0-9-]+)':/g)].map((m) => m[1]))
+
+const UV_GLYPHS = new Map(
+  [...UV_ICON_SRC.matchAll(/'uicon-([a-z0-9-]+)':\s*'([^']*)'/g)].map((m) => [
+    m[1],
+    unescapeGlyph(m[2]),
+  ]),
+)
 
 describe('自定义 tabBar 的图标名', () => {
   // 从 .vue 迁到 .js 之后，这个文件不再含 "AppIcon" 字样，
@@ -319,23 +338,203 @@ describe('自定义 tabBar 与全局定义的数值没有漂移', () => {
       bad.join('\n')).toEqual([])
   })
 
-  it('wxml 里写死的图标颜色与 AppIcon 的 TONE_COLORS 一致', () => {
-    const appIcon = readIfExists(join(ROOT, 'components', 'AppIcon.vue'))
-    const tones = new Map(
-      [...appIcon.matchAll(/\b(primary|ink|muted|white):\s*'(#[0-9a-fA-F]{3,8})'/g)]
-        .map((m) => [m[1], m[2].toLowerCase()]),
-    )
-    expect(tones.size, 'AppIcon 的 TONE_COLORS 没解析出来').toBe(4)
+  it('图标颜色跟着 token 走，不是写死的十六进制', () => {
+    // 旧实现是 `<u-icon color="#e16531">`：u-icon 的 color 是 Vue prop，
+    // 只能收一个确定的颜色字符串，于是品牌色在 wxml 里抄了一份。
+    // 2026-10-11 品牌色 #FF7B7B → #e16531 时，正是这种抄写不会跟着走。
+    // 图标改成原生 <text> 后颜色回到 CSS，这条钉住它别再抄回 wxml 里去。
+    const wxss = readIfExists(join(ROOT, 'custom-tab-bar', 'index.wxss'))
 
-    // u-icon 的 color 是 prop，最终落到行内 style 上，只能用确定的颜色字符串，
-    // 没法写 var(--…)。所以这几个值在 wxml 里抄了一份。
-    const wxml = readIfExists(join(ROOT, 'custom-tab-bar', 'index.wxml'))
-    for (const tone of ['primary', 'muted']) {
-      expect(
-        wxml.toLowerCase().includes(tones.get(tone)!),
-        `wxml 里没有 AppIcon 的 ${tone} 色 ${tones.get(tone)}，两边漂了`,
-      ).toBe(true)
+    const base = wxss.match(/^\.tabbar__icon\s*\{([^}]*)\}/m)
+    expect(base, '认不出 .tabbar__icon 规则').not.toBeNull()
+    expect(base![1], '图标默认色应当引用 --text-muted 这个 token').toMatch(
+      /color:\s*var\(--text-muted,/,
+    )
+
+    const active = wxss.match(/^\.tabbar__icon--active\s*\{([^}]*)\}/m)
+    expect(active, '认不出 .tabbar__icon--active 规则').not.toBeNull()
+    expect(active![1], '选中色应当引用 --color-primary 这个 token').toMatch(
+      /color:\s*var\(--color-primary,/,
+    )
+  })
+})
+
+/**
+ * 字形表。
+ *
+ * 底栏是**原样复制**的原生组件，用不了 u-icon：u-icon 是编译过的 uni-app
+ * 组件，props 只走 u-p 通道（运行时非页面分支取的是 `properties.uP`），
+ * 而原生 wxml 发不出 u-p —— `name` 落到组件里是 undefined，图标渲染成
+ * 空串且**没有任何报错**。所以 9 个字形码点在 custom-tab-bar/index.js 里
+ * 抄了一份，于是有了「抄错」这个新的失败模式，同样无报错、只是空白。
+ */
+describe('自定义 tabBar 的字形表', () => {
+  /** index.js 里 `const GLYPHS = { … }` 那一段 */
+  const localGlyphs = (() => {
+    const js = readIfExists(join(ROOT, 'custom-tab-bar', 'index.js'))
+    const block = js.match(/const\s+GLYPHS\s*=\s*\{([\s\S]*?)\n\}/)
+    if (!block) return new Map<string, string>()
+    return new Map(
+      // 键可能带引号（'home-fill'）也可能不带（home），值必须是 \uXXXX 转义。
+      // 值限定成转义形式，才不会把 `text: '首页'` 这类条目也匹配进来。
+      [...block[1].matchAll(/'?([a-z0-9-]+)'?:\s*'((?:\\u[0-9a-fA-F]{4})+)'/g)].map((m) => [
+        m[1],
+        unescapeGlyph(m[2]),
+      ]),
+    )
+  })()
+
+  const hex = (s: string) =>
+    [...s].map((c) => 'U+' + c.codePointAt(0)!.toString(16).toUpperCase()).join(' ')
+
+  it('本地码点与 uview-plus 的 icons.js 逐字一致', () => {
+    expect(UV_GLYPHS.size, 'uview-plus 的字形表没解析出来，这条会空转').toBeGreaterThan(200)
+    expect(localGlyphs.size, 'index.js 里没解析出 GLYPHS，这条会空转').toBeGreaterThanOrEqual(9)
+
+    const bad: string[] = []
+    for (const [name, glyph] of localGlyphs) {
+      const real = UV_GLYPHS.get(name)
+      if (real === undefined) {
+        bad.push(`${name}: uview-plus 里没有这个图标名`)
+      } else if (real !== glyph) {
+        bad.push(`${name}: 本地 ${hex(glyph)} ≠ uview-plus ${hex(real)}`)
+      }
     }
+    expect(
+      bad,
+      '字形码点与 uview-plus 漂了，底栏图标会渲染成一片空白且没有任何报错：\n' + bad.join('\n'),
+    ).toEqual([])
+  })
+
+  it('TABS 用到的每个图标名都在本地字形表里', () => {
+    // GLYPHS[name] 取不到 → DISPLAY_TABS 里那个 glyph 是 undefined →
+    // wxml 渲染成空串。因为 .tabbar__icon 有固定 height，看布局也正常，
+    // 只有那一格没有图标。
+    const js = readIfExists(join(ROOT, 'custom-tab-bar', 'index.js'))
+    const names = new Set(
+      [...js.matchAll(/\bicon(?:Active)?:\s*'([a-z0-9-]+)'/g)].map((m) => m[1]),
+    )
+    expect(names.size, '一个图标名都没扫到，正则或写法变了').toBeGreaterThanOrEqual(5)
+
+    const missing = [...names].filter((n) => !localGlyphs.has(n))
+    expect(
+      missing,
+      '这些图标名在 GLYPHS 里没有对应码点，底栏那一格会没有图标：\n' + missing.join('\n'),
+    ).toEqual([])
+  })
+
+  it('码点写成 \\uXXXX 转义，文件里不出现字面 PUA 字符', () => {
+    // 字面 PUA 字符在这个手写文件里既看不见，又容易被编辑器或工具链的
+    // 编码转换弄坏 —— 弄坏之后同样是「图标没了、但没有报错」。
+    const bad: string[] = []
+    for (const file of ['index.js', 'index.wxml', 'index.wxss']) {
+      const text = readIfExists(join(ROOT, 'custom-tab-bar', file))
+      const pua = [...text].filter((c) => {
+        const n = c.codePointAt(0)!
+        return n >= 0xe000 && n <= 0xf8ff
+      })
+      if (pua.length) bad.push(`${file}: ${pua.length} 个`)
+    }
+    expect(bad, '这些文件里出现了字面字形字符，请写成 \\uXXXX 转义：\n' + bad.join('\n')).toEqual(
+      [],
+    )
+  })
+
+  it('底栏不引用 u-icon（它在这里收不到 props）', () => {
+    // 这次故障的根因闸。一般规则：本目录是原样复制的，里面的 wxml 不是
+    // uni-app 编译产物、发不出 u-p，所以任何编译过的组件在这里都收不到 props。
+    // 真要在这个文件里用某个组件，先确认它不依赖 props（那时再放宽这条）。
+    const wxml = readIfExists(join(ROOT, 'custom-tab-bar', 'index.wxml'))
+    // 先去掉注释：讲解这件事的注释里就写着 `<u-icon>`，不剥会把注释当代码判。
+    const code = wxml.replace(/<!--[\s\S]*?-->/g, '')
+    expect(
+      /<u-icon\b/.test(code),
+      'wxml 里又出现了 <u-icon>：它的 props 走 u-p 通道，原生 wxml 传不进去，图标会是空白',
+    ).toBe(false)
+
+    const json = readIfExists(join(ROOT, 'custom-tab-bar', 'index.json'))
+    const using = (JSON.parse(json || '{}').usingComponents ?? {}) as Record<string, string>
+    expect(
+      Object.keys(using).filter((k) => k === 'u-icon'),
+      'index.json 里又声明了 u-icon —— 底栏拿不到它的 props',
+    ).toEqual([])
+  })
+})
+
+// ── 底栏的图标字体 ────────────────────────────────────────────────────────
+
+/**
+ * 图标字体只有两份来源，而**两份都到不了这个组件**：
+ *
+ *   1. app.wxss 里的 @font-face（来自 styles/uview-iconfont.scss）——
+ *      自定义组件有样式隔离，app.wxss 的规则不作用于组件内部节点。
+ *   2. uview-plus 运行时的 wx.loadFontFace({ global: true }) ——
+ *      它只在 **u-icon 被实例化时**触发（u-icon 源码的 beforeCreate：
+ *      `fontUtil.params.loaded || fontUtil.loadFont()`，vendor.js 里没有
+ *      第二个调用点）。底栏已经没有任何 u-icon 了，没人替它注册。
+ *
+ * 2026-10-11 23:49 的开发者工具截图就是这两条同时成立的样子：
+ * `.tabbar__icon` 的 44rpx 格子**占住了**（标签被推下去 44rpx，与 spec §6.2
+ * 的 18+44+6 吻合），说明 class 与字号都生效，但格子里一点墨迹都没有 ——
+ * PUA 码点在系统字体里没有字形，于是渲染成空。同一张图上页面里的 uview
+ * 图标正常，因为那些地方有 u-icon，loadFontFace 被触发过。
+ *
+ * 所以底栏必须把 @font-face 写进**组件自己的**样式表。这一组用例守住两件事：
+ * 字体确实在组件里注册了，且与页面用的那份是同一个文件。
+ */
+describe('底栏的图标字体', () => {
+  const ICONFONT = join(ROOT, 'custom-tab-bar', 'iconfont.wxss')
+  const UVIEW_SCSS = join(ROOT, 'styles', 'uview-iconfont.scss')
+
+  /** 从一份样式源码里取出内联字体的 base64。 */
+  function base64Of(css: string): string {
+    return (css.match(/base64,([A-Za-z0-9+/=]+)/) ?? [])[1] ?? ''
+  }
+
+  it('底栏自带字体，且与 styles/uview-iconfont.scss 是同一份', () => {
+    // 两处各存一份 base64 是无法避免的（组件必须有自己的一份），代价是
+    // 可能漂：页面换了字形而底栏没换，表现是**底栏图标与页面图标不是同一套**，
+    // 不报错。这里逐字比对，漂了就是 RED。
+    const page = base64Of(readIfExists(UVIEW_SCSS))
+    const bar = base64Of(readIfExists(ICONFONT))
+    // 先证明上面那条不是空转：两份都真的解析出了字体
+    expect(page.length, 'styles/uview-iconfont.scss 里没解析出 base64').toBeGreaterThan(10000)
+    expect(bar, '底栏没有自带图标字体（custom-tab-bar/iconfont.wxss），或与页面那份不一致').toBe(page)
+  })
+
+  it('字体是 base64 内联的，不是远程 URL', () => {
+    // 远程 URL 断网或域名没配就是空白方块 —— styles/uview-iconfont.scss
+    // 顶部记着这个教训，底栏不该把它重新引进来。
+    const css = readIfExists(ICONFONT)
+    expect(css, 'custom-tab-bar/iconfont.wxss 不存在').not.toBe('')
+    expect(
+      /url\(\s*['"]?https?:/i.test(css),
+      'iconfont.wxss 里出现了远程字体 URL：断网/域名没配就是空白方块',
+    ).toBe(false)
+  })
+
+  it('index.wxss 把它 @import 进来，且 @import 是全文件第一行', () => {
+    // CSS/WXSS 要求 @import 在所有规则之前；写在中间会被整条忽略，
+    // 表现与「没写」完全一样 —— 又是那种没有报错的空白。
+    // 这里断言的是**原始文本**就以 @import 开头，不先剥注释：按规范注释
+    // 会先被剥掉、不影响 @import，但微信的 WXSS 编译器不保证这么做，
+    // 所以干脆不给它这个机会。
+    const wxss = readIfExists(join(ROOT, 'custom-tab-bar', 'index.wxss'))
+    expect(
+      wxss,
+      'index.wxss 第一行不是 @import "./iconfont.wxss" —— 底栏的字体不会注册',
+    ).toMatch(/^@import\s+["']\.\/iconfont\.wxss["']/)
+  })
+
+  it('@font-face 的 family 与 .tabbar__icon 用的是同一个名字', () => {
+    // family 名对不上，@font-face 注册了也白注册，同样是静默空白。
+    const family = (readIfExists(ICONFONT).match(/font-family:\s*['"]?([A-Za-z0-9_-]+)/) ?? [])[1]
+    expect(family, 'iconfont.wxss 里没解析出 font-family').toBeTruthy()
+    const wxss = readIfExists(join(ROOT, 'custom-tab-bar', 'index.wxss'))
+    expect(
+      wxss,
+      `.tabbar__icon 用的 family 与字体文件不一致（字体是 ${family}）`,
+    ).toContain(`font-family: ${family}`)
   })
 })
 
