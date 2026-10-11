@@ -2,8 +2,23 @@
 // HxMall Design Tokens — Theme SCSS
 // Brand: Coral pink, Cream white
 // ===================================
+//
+// 声明在 `page` 上，不是 `:root` —— 这不是风格选择，是 WXSS 的硬约束。
+//
+// 2026-10-11 第一次在微信开发者工具里打开构建产物，全站渲染成
+// 「像没加载样式」：无渐变、无圆角、无阴影、间距全塌。产物 `app.wxss`
+// 里 `:root{--color-primary:…}` 确实在，但运行时一个自定义属性都读不到，
+// 于是全站 18 个 wxss、约 500 处 `var(--…)` 同时失效。
+//
+// `page` 是 WXSS 里真实存在的页面根节点（uni-app 自己注入的
+// `page{--status-bar-height:25px}` 用的就是它），变量从这里往下继承进
+// 各个自定义组件。回归测试见 src/utils/__tests__/theme-tokens.test.ts。
+//
+// 若日后要出 H5 端：H5 里没有 `page` 元素，需要另起一条 `:root` 规则，
+// **不要**把它并进这条规则的选择器列表 —— 合并后 WXSS 侧整条规则的行为
+// 未经实测，别拿线上样式赌。
 
-:root {
+page {
   // ── Primary Colors ──────────────────
   --color-primary: #e16531;
   --color-primary-light: #f0916a;      // 头图渐变终点（原 #f4a97e，加深一档）
