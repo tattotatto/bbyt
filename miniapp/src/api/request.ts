@@ -16,6 +16,35 @@ interface ResponseData<T = any> {
   data: T
 }
 
+/**
+ * `uni.request` 在没传 success/fail/complete 时返回 Promise，
+ * **resolve 的是响应对象本身**，不是 `[error, res]`。
+ *
+ * 这套 uni-app（3.0.0-alpha-5020120260710001）的运行时里，包装成
+ * `[null, data]` 的那段是注释掉的（`@dcloudio/uni-mp-weixin` 的 handlePromise），
+ * 所以 `const [error, res] = await uni.request(...)` 是对普通对象做数组解构 ——
+ * 直接抛 `TypeError: ... is not iterable`，被外层 catch 吞成「网络异常」，
+ * 表现为**所有取服务端数据的区块都加载失败**（2026-10-12 的故障）。
+ *
+ * 网络层失败（微信的 fail 回调）走的是 Promise reject，由外层 catch 处理。
+ * 契约由 api/__tests__/request.test.ts 钉住，别改回解构写法。
+ */
+interface UniResponse<T = any> {
+  statusCode: number
+  data: ResponseData<T>
+  errMsg?: string
+}
+
+/** 调一次 uni.request，返回响应对象（失败则 reject）。 */
+function sendRequest<T>(
+  url: string,
+  method: RequestOptions['method'],
+  data: Record<string, any>,
+  header: Record<string, string>
+): Promise<UniResponse<T>> {
+  return uni.request({ url, method, data, header, timeout: 30000 }) as unknown as Promise<UniResponse<T>>
+}
+
 // API base URL (from shared constants)
 export const BASE_URL = API_BASE_URL
 
@@ -72,23 +101,9 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [error, res] = await uni.request({
-      url: BASE_URL + url,
-      method,
-      data,
-      header: headers,
-      timeout: 30000
-    }) as any
+    const res = await sendRequest<T>(BASE_URL + url, method, data, headers)
 
     if (showLoading) uni.hideLoading()
-
-    if (error) {
-      if (showToast) {
-        uni.showToast({ title: '网络请求失败', icon: 'none' })
-      }
-      return Promise.reject(error)
-    }
 
     const response = res.data as ResponseData<T>
 
@@ -105,15 +120,7 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
           refreshQueue = []
           // Retry original request with new token
           headers['Authorization'] = `Bearer ${newToken}`
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const [retryError, retryRes] = await uni.request({
-            url: BASE_URL + url,
-            method,
-            data,
-            header: headers,
-            timeout: 30000
-          }) as any
-          if (retryError) return Promise.reject(retryError)
+          const retryRes = await sendRequest<T>(BASE_URL + url, method, data, headers)
           return retryRes.data as ResponseData<T>
         } catch (refreshError) {
           isRefreshing = false
@@ -133,16 +140,12 @@ async function request<T = any>(options: RequestOptions): Promise<ResponseData<T
             reject,
             executeWithToken: async (newToken: string) => {
               headers['Authorization'] = `Bearer ${newToken}`
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const [qError, qRes] = await uni.request({
-                url: BASE_URL + url,
-                method,
-                data,
-                header: headers,
-                timeout: 30000
-              }) as any
-              if (qError) reject(qError)
-              else resolve(qRes.data as ResponseData<T>)
+              try {
+                const qRes = await sendRequest<T>(BASE_URL + url, method, data, headers)
+                resolve(qRes.data as ResponseData<T>)
+              } catch (queueError) {
+                reject(queueError)
+              }
             }
           })
         })
@@ -174,15 +177,12 @@ async function refreshAccessToken(): Promise<string> {
     throw new Error('No refresh token available')
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [error, res] = await uni.request({
-    url: BASE_URL + '/auth/refresh',
-    method: 'POST',
-    data: { refresh_token: refreshToken },
-    header: { 'Content-Type': 'application/json' }
-  }) as any
-
-  if (error) throw error
+  const res = await sendRequest<{ access_token: string; refresh_token: string }>(
+    BASE_URL + '/auth/refresh',
+    'POST',
+    { refresh_token: refreshToken },
+    { 'Content-Type': 'application/json' }
+  )
 
   const response = res.data as ResponseData<{ access_token: string; refresh_token: string }>
   if (response.code !== 0) {
