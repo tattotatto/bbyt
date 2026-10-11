@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { NAV_BAR_HEIGHT } from '../utils'
 
 export const useAppStore = defineStore('app', () => {
   // State
@@ -12,7 +13,7 @@ export const useAppStore = defineStore('app', () => {
 
   // Getters
   const statusBarHeight = computed(() => systemInfo.value?.statusBarHeight || 20)
-  const navBarHeight = computed(() => 44) // WeChat mini program standard nav bar height
+  const navBarHeight = computed(() => NAV_BAR_HEIGHT) // 微信留给胶囊按钮的那条带
   const totalNavHeight = computed(() => statusBarHeight.value + navBarHeight.value)
   const windowWidth = computed(() => systemInfo.value?.windowWidth || 375)
   const windowHeight = computed(() => systemInfo.value?.windowHeight || 667)

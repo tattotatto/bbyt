@@ -33,6 +33,7 @@ import { computed, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import SearchBar from './SearchBar.vue'
 import { useAppStore } from '../stores/app'
+import { heroPaddingTop as calcHeroPaddingTop } from '../utils'
 
 /**
  * 品牌色头图区。
@@ -63,21 +64,27 @@ defineEmits<{
 }>()
 
 /**
- * 让开状态栏。
+ * 让开状态栏和右上角的微信胶囊按钮。
  *
- * 头图是全站第一个元素，所以它必须自己扛状态栏高度 —— 用了这个组件的
- * 页面都在 pages.json 里设了 navigationStyle: "custom"（见 Task 8），
+ * 头图是全站第一个元素，所以它必须自己扛顶部留白 —— 用了这个组件的
+ * 页面都在 pages.json 里设了 `navigationStyle: "custom"`（见 Task 8），
  * 没有系统导航栏帮忙撑开顶部。若哪天有页面忘了设 custom，这里会多出
  * 一块空白而不是顶到状态栏下面，是安全的那种失败。
+ *
+ * 让位量交给 utils 的 heroPaddingTop：右上角摆了「登录 / 注册」白胶囊时
+ * 要整条让开导航栏（否则和微信自己的胶囊按钮叠在一起），左侧只有品牌块
+ * 时不用。算式与实测依据都在那个函数的注释里。
  *
  * statusBarHeight 来自 stores/app（单位 px，是设备度量，不要转 rpx）。
  */
 const appStore = useAppStore()
 
-const heroPaddingTop = computed(() => {
-  const base = appStore.statusBarHeight || 20
-  return `${base + (props.compact ? 8 : 20)}px`
-})
+const heroPaddingTop = computed(() =>
+  `${calcHeroPaddingTop(appStore.statusBarHeight, {
+    showLogin: props.showLogin,
+    compact: props.compact,
+  })}px`
+)
 
 const keyword = ref('')
 </script>

@@ -507,6 +507,52 @@ export function hideLoading(): void {
   uni.hideLoading()
 }
 
+// ── 自定义导航栏的让位 ─────────────────────────
+
+/**
+ * 微信导航栏带的高度（px）。
+ *
+ * `navigationStyle: "custom"` 的页面里，状态栏下面这 44px 是微信留给自己
+ * 胶囊按钮（··· 和 ◉）的：胶囊本身 87×32，在这一条里上下居中，也就是占
+ * `statusBar + 6` ~ `statusBar + 38`。
+ */
+export const NAV_BAR_HEIGHT = 44
+
+/**
+ * 头图内容距页面顶部的距离（px）—— 让开右上角的微信胶囊按钮。
+ *
+ * ── 为什么需要这个函数 ────────────────────────────────────────────────
+ *
+ * 头图（BrandHero）是自定义导航页面里的第一个元素，内容默认就落在上面
+ * 那条 44px 导航栏带里。右上角一旦摆上「登录 / 注册」白胶囊，两个白块
+ * 就叠在一起。2026-10-11 开发者工具实测（素材/index2.png）：
+ * 微信胶囊 y 38~69、登录胶囊 y 65~93，上沿被盖住 4px，视觉上粘成一块。
+ * 原来的算式是 `statusBar + 20`，正好落进带内。
+ *
+ *   statusBar ─────┬─ 胶囊上沿 statusBar+6
+ *                  │   胶囊 32px
+ *                  ├─ 胶囊下沿 statusBar+38
+ *   statusBar + 44 ──── 内容从这里开始（离胶囊下沿还有 6px 余量）
+ *
+ * 让位量取整条导航栏而不是「刚好差一点」：6px 是胶囊在带内居中留下的
+ * 半格，任意状态栏高度下都成立，不需要按机型调数值。
+ *
+ * 右侧没有内容的页面不必让：左侧的品牌块和右上角的胶囊不在一处，
+ * 保持原来的紧凑间距（compact 8px / 普通 20px）。
+ *
+ * @param statusBarHeight 设备状态栏高度（px），取不到时按 20 兜底
+ * @param opts.showLogin  头图右上角有内容（登录胶囊）
+ * @param opts.compact    紧凑变体（只放标题、右上角空着的页面）
+ */
+export function heroPaddingTop(
+  statusBarHeight: number,
+  opts: { showLogin?: boolean; compact?: boolean } = {}
+): number {
+  const statusBar = statusBarHeight || 20
+  if (opts.showLogin) return statusBar + NAV_BAR_HEIGHT
+  return statusBar + (opts.compact ? 8 : 20)
+}
+
 // ── Navigate Back or Home ─────────────────────────
 
 /**

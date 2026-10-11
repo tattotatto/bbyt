@@ -12,7 +12,8 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "蓓贝婴童",
         "navigationBarBackgroundColor": "#e16531",
-        "navigationBarTextStyle": "white"
+        "navigationBarTextStyle": "white",
+        "backgroundColorTop": "#e16531"
       }
     },
     {
@@ -21,7 +22,8 @@
         "navigationBarTitleText": "蓓贝客服",
         "navigationStyle": "custom",
         "navigationBarBackgroundColor": "#e16531",
-        "navigationBarTextStyle": "white"
+        "navigationBarTextStyle": "white",
+        "backgroundColorTop": "#e16531"
       }
     },
     {
@@ -30,7 +32,8 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "设计案例",
         "navigationBarBackgroundColor": "#FFF8F0",
-        "navigationBarTextStyle": "black"
+        "navigationBarTextStyle": "black",
+        "backgroundColorTop": "#e16531"
       }
     },
     {
@@ -47,7 +50,8 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "商品列表",
         "navigationBarBackgroundColor": "#FFF8F0",
-        "navigationBarTextStyle": "black"
+        "navigationBarTextStyle": "black",
+        "backgroundColorTop": "#e16531"
       }
     },
     {
@@ -96,7 +100,8 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "我的",
         "navigationBarBackgroundColor": "#e16531",
-        "navigationBarTextStyle": "white"
+        "navigationBarTextStyle": "white",
+        "backgroundColorTop": "#e16531"
       }
     },
     {
